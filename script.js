@@ -729,6 +729,8 @@ let isPaused = false;
 let announcementActive = false;
 const pressedKeys = {}; // Frame-perfect input state
 
+let fallingPowerUps = [];
+
 function startBreakoutGame() {
     canvas = document.getElementById('breakout-canvas');
     ctx = canvas.getContext('2d');
@@ -746,6 +748,7 @@ function startBreakoutGame() {
     paddle.speed = 12;
     blocks = [];
     particles = [];
+    fallingPowerUps = [];
     activeEffects = {};
     isPaused = false;
     announcementActive = false;
@@ -784,7 +787,14 @@ function createBlocks() {
     for(let r=0; r<rows; r++) {
         for(let c=0; c<cols; c++) {
             const type = pool[Math.floor(Math.random() * pool.length)];
-            blocks.push({ x: c * (width + padding) + padding, y: r * (height + padding) + padding + 50, width, height, type, active: true });
+            blocks.push({ 
+                x: c * (width + padding) + padding, 
+                y: r * (height + padding) + padding + 50, 
+                width, 
+                height, 
+                type, 
+                active: true 
+            });
         }
     }
 }
@@ -822,6 +832,24 @@ function updatePhysics() {
         }
     }
     updateTimersUI();
+
+    // Update Falling Power-ups
+    fallingPowerUps.forEach((p, idx) => {
+        p.y += p.speed;
+        
+        // Collection by Paddle
+        if (p.y + p.size >= paddle.y && p.y <= paddle.y + paddle.height &&
+            p.x + p.size >= paddle.x && p.x <= paddle.x + paddle.width) {
+            
+            activatePowerUp(p.type);
+            fallingPowerUps.splice(idx, 1);
+            playClick();
+        } 
+        // Off-screen
+        else if (p.y > canvas.height) {
+            fallingPowerUps.splice(idx, 1);
+        }
+    });
 
     balls.forEach((b, idx) => {
         if (b.stuck) { b.x = paddle.x + paddle.width/2; b.y = paddle.y - b.radius; return; }
@@ -867,7 +895,7 @@ function updatePhysics() {
             if (block.active && b.x > block.x && b.x < block.x + block.width && b.y > block.y && b.y < block.y + block.height) {
                 if (!activeEffects['fireball']) b.dy *= -1;
                 block.active = false; addScore(50); playClick();
-                if (block.type.power) handlePowerUpHit(block.type);
+                if (block.type.power) handlePowerUpHit(block, block.type);
                 if (blocks.filter(bl => bl.active).length === 0) endGame(true);
             }
         });
@@ -875,7 +903,7 @@ function updatePhysics() {
     particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.life--; if (p.life <= 0) particles.splice(i, 1); });
 }
 
-function handlePowerUpHit(type) {
+function handlePowerUpHit(block, type) {
     if (type.power === 'legendary') {
         createConfetti();
         blocks.forEach(b => b.active = false);
@@ -883,9 +911,16 @@ function handlePowerUpHit(type) {
         setTimeout(() => endGame(true), 2000);
         return;
     }
-    if (type.power === 'extraBall') { balls.push({ x: paddle.x + paddle.width/2, y: paddle.y - 10, dx: 4, dy: -4, radius: 6, stuck: false }); return; }
-    triggerAnnouncement(type.name);
-    setTimeout(() => activatePowerUp(type), 1500);
+    
+    // Spawn falling object instead of instant activation
+    fallingPowerUps.push({
+        x: block.x + block.width / 2 - 7,
+        y: block.y,
+        type: type,
+        color: type.color,
+        speed: 2.5,
+        size: 15
+    });
 }
 
 function triggerAnnouncement(text, legendary = false) {
@@ -904,12 +939,27 @@ function triggerAnnouncement(text, legendary = false) {
 
 function activatePowerUp(type) {
     const { power, duration, name } = type;
-    if (power === 'split') { const len = balls.length; for(let i=0; i<len; i++) balls.push({ ...balls[i], dx: -balls[i].dx, stuck: false }); }
-    else if (power === 'speed') balls.forEach(b => { b.dx *= 1.5; b.dy *= 1.5; });
-    else if (power === 'bigBall') balls.forEach(b => b.radius = 12);
-    else if (power === 'widePaddle') paddle.width = 150;
-    else if (power === 'shrink') paddle.width = 60;
-    if (duration > 0) activeEffects[power] = { expires: Date.now() + duration * 1000, name, total: duration * 1000 };
+    if (type.power === 'extraBall') { 
+        balls.push({ x: paddle.x + paddle.width/2, y: paddle.y - 10, dx: 4, dy: -4, radius: 6, stuck: false }); 
+        return; 
+    }
+
+    triggerAnnouncement(name);
+    
+    setTimeout(() => {
+        if (power === 'split') { 
+            const len = balls.length; 
+            for(let i=0; i<len; i++) balls.push({ ...balls[i], dx: -balls[i].dx, stuck: false }); 
+        }
+        else if (power === 'speed') balls.forEach(b => { b.dx *= 1.5; b.dy *= 1.5; });
+        else if (power === 'bigBall') balls.forEach(b => b.radius = 12);
+        else if (power === 'widePaddle') paddle.width = 150;
+        else if (power === 'shrink') paddle.width = 60;
+        
+        if (duration > 0) {
+            activeEffects[power] = { expires: Date.now() + duration * 1000, name, total: duration * 1000 };
+        }
+    }, 1500);
 }
 
 function createConfetti() {
@@ -918,17 +968,40 @@ function createConfetti() {
 
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw Paddle
     ctx.fillStyle = activeEffects['fireball'] ? '#FFD700' : paddle.color;
     ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-    balls.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fillStyle = activeEffects['fireball'] ? '#FF4500' : '#fff'; ctx.fill(); });
-    blocks.forEach(b => { if (b.active) { 
-        if (b.type.color.includes('gradient')) {
-            let grad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y);
-            grad.addColorStop(0,'red'); grad.addColorStop(0.2,'orange'); grad.addColorStop(0.4,'yellow'); grad.addColorStop(0.6,'green'); grad.addColorStop(0.8,'blue'); grad.addColorStop(1,'violet');
-            ctx.fillStyle = grad;
-        } else ctx.fillStyle = b.type.color;
-        ctx.fillRect(b.x, b.y, b.width-2, b.height-2); 
-    }});
+    
+    // Draw Balls
+    balls.forEach(b => { 
+        ctx.beginPath(); 
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); 
+        ctx.fillStyle = activeEffects['fireball'] ? '#FF4500' : '#fff'; 
+        ctx.fill(); 
+    });
+    
+    // Draw Blocks
+    blocks.forEach(b => { 
+        if (b.active) { 
+            if (b.type.color.includes('gradient')) {
+                let grad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y);
+                grad.addColorStop(0,'red'); grad.addColorStop(0.2,'orange'); grad.addColorStop(0.4,'yellow'); grad.addColorStop(0.6,'green'); grad.addColorStop(0.8,'blue'); grad.addColorStop(1,'violet');
+                ctx.fillStyle = grad;
+            } else ctx.fillStyle = b.type.color;
+            ctx.fillRect(b.x, b.y, b.width-2, b.height-2); 
+        }
+    });
+
+    // Draw Falling Power-ups
+    fallingPowerUps.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(p.x, p.y, p.size, p.size);
+    });
+
+    // Draw Particles
     particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 4, 4); });
 }
 

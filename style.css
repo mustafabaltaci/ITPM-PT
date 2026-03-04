@@ -895,6 +895,21 @@ th { background: rgba(255, 0, 255, 0.2); color: var(--neon-magenta); }
     transition: all 0.5s cubic-bezier(0.6, -0.28, 0.735, 0.045);
 }
 
+.powerup-obj {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 10px #fff;
+    animation: powerup-pulse 0.5s infinite alternate;
+    image-rendering: pixelated;
+}
+
+@keyframes powerup-pulse {
+    from { transform: scale(1); filter: brightness(1); }
+    to { transform: scale(1.2); filter: brightness(1.5); }
+}
+
 #powerup-announcement.show {
     opacity: 1;
 }
