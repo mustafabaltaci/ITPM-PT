@@ -360,6 +360,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
         userData.name = name;
         userData.studentId = id;
         localStorage.setItem('pm_arcade_user', JSON.stringify(userData));
+        document.getElementById('display-name').innerText = name.toUpperCase();
         playClick();
         
         loginScreen.classList.add('hidden');
