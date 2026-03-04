@@ -21,8 +21,29 @@
     </header>
 
     <main id="game-container">
+        <!-- Login Screen -->
+        <section id="login-screen" class="screen">
+            <div class="terminal-box login-box">
+                <div class="terminal-header">
+                    <span>SYSTEM INITIALIZATION</span>
+                </div>
+                <div class="terminal-body login-body">
+                    <h2 class="glitch" data-text="IDENTIFY PERSONNEL">IDENTIFY PERSONNEL</h2>
+                    <div class="input-group">
+                        <label>FULL NAME (AD SOYAD)</label>
+                        <input type="text" id="user-name" placeholder="ENTER FULL NAME..." autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <label>STUDENT ID (OKUL NUMARASI)</label>
+                        <input type="text" id="user-id" placeholder="ENTER STUDENT ID..." autocomplete="off">
+                    </div>
+                    <button id="start-btn" class="btn btn-large">INITIALIZE SPRINT</button>
+                </div>
+            </div>
+        </section>
+
         <!-- World Map Screen -->
-        <section id="world-map" class="screen">
+        <section id="world-map" class="screen hidden">
             <h1 class="glitch" data-text="SELECT YOUR STAGE">SELECT YOUR STAGE</h1>
             <div class="map-container">
                 <div id="player-avatar"></div>

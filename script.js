@@ -337,9 +337,11 @@ const stages = {
     }
 };
 
+let userData = { name: '', studentId: '' };
 let currentStage = 1;
 let unlockedStages = 1;
 
+const loginScreen = document.getElementById('login-screen');
 const worldMap = document.getElementById('world-map');
 const contentScreen = document.getElementById('content-screen');
 const contentArea = document.getElementById('content-area');
@@ -348,6 +350,35 @@ const scoreEl = document.getElementById('score');
 const rankEl = document.getElementById('rank');
 const clickSound = document.getElementById('click-sound');
 const playerAvatar = document.getElementById('player-avatar');
+
+// Initialize login logic
+document.getElementById('start-btn').addEventListener('click', () => {
+    const name = document.getElementById('user-name').value.trim();
+    const id = document.getElementById('user-id').value.trim();
+
+    if (name && id) {
+        userData.name = name;
+        userData.studentId = id;
+        localStorage.setItem('pm_arcade_user', JSON.stringify(userData));
+        playClick();
+        
+        loginScreen.classList.add('hidden');
+        worldMap.classList.remove('hidden');
+        updateMap();
+    } else {
+        alert("PLEASE ENTER BOTH NAME AND STUDENT ID TO INITIALIZE SPRINT.");
+    }
+});
+
+// Check for existing session
+window.addEventListener('load', () => {
+    const savedUser = localStorage.getItem('pm_arcade_user');
+    if (savedUser) {
+        userData = JSON.parse(savedUser);
+        document.getElementById('user-name').value = userData.name;
+        document.getElementById('user-id').value = userData.studentId;
+    }
+});
 
 document.querySelectorAll('.stage-node').forEach(node => {
     node.addEventListener('click', () => {
