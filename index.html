@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT MANAGEMENT: ARCADE TRAINING</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="crt-overlay"></div>
+
+    <header>
+        <div class="logo">PM: ARCADE v2.0</div>
+        <div class="stats">
+            <span>RANK: <span id="rank">ROOKIE</span></span>
+            <span>SCORE: <span id="score">00000</span></span>
+            <span>LIVES: <span id="lives">★★★</span></span>
+        </div>
+    </header>
+
+    <main id="game-container">
+        <!-- World Map Screen -->
+        <section id="world-map" class="screen">
+            <h1 class="glitch" data-text="SELECT YOUR STAGE">SELECT YOUR STAGE</h1>
+            <div class="map-container">
+                <div class="stage-node active" data-stage="1" style="top: 40%; left: 20%;">
+                    <div class="node-label">STAGE 1: FORMAL ORGS</div>
+                    <div class="pulse"></div>
+                </div>
+                <div class="stage-node locked" data-stage="2" style="top: 30%; left: 50%;">
+                    <div class="node-label">STAGE 2: STAKEHOLDERS</div>
+                    <div class="pulse"></div>
+                </div>
+                <div class="stage-node locked" data-stage="3" style="top: 60%; left: 45%;">
+                    <div class="node-label">STAGE 3: THE TEAM</div>
+                    <div class="pulse"></div>
+                </div>
+                <div class="stage-node locked" data-stage="4" style="top: 50%; left: 80%;">
+                    <div class="node-label">STAGE 4: LEARNING & HR</div>
+                    <div class="pulse"></div>
+                </div>
+                <svg class="map-paths">
+                    <line x1="20%" y1="40%" x2="50%" y2="30%" class="path" />
+                    <line x1="50%" y1="30%" x2="45%" y2="60%" class="path" />
+                    <line x1="45%" y1="60%" x2="80%" y2="50%" class="path" />
+                </svg>
+            </div>
+        </section>
+
+        <!-- Content Screen -->
+        <section id="content-screen" class="screen hidden">
+            <div class="terminal-box">
+                <div class="terminal-header">
+                    <span id="current-stage-title">STAGE 1: FORMAL ORGANIZATIONS</span>
+                    <button id="back-to-map" class="btn-small">BACK TO MAP</button>
+                </div>
+                <div id="content-area" class="terminal-body">
+                    <!-- Content will be injected via JS -->
+                </div>
+                <div class="terminal-footer">
+                    <button id="prev-btn" class="btn">PREVIOUS</button>
+                    <button id="next-btn" class="btn">NEXT STAGE</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- FINAL BOSS: BREAKOUT SCREEN -->
+        <section id="breakout-screen" class="screen hidden">
+            <div id="powerup-announcement"></div>
+            <div class="game-wrapper">
+                <canvas id="breakout-canvas"></canvas>
+                <div id="sprint-status-panel">
+                    <h3>SPRINT STATUS</h3>
+                    <div class="status-item">
+                        <span>LIVES:</span>
+                        <span id="boss-lives" class="neon-text">★★★</span>
+                    </div>
+                    <div class="status-item">
+                        <span>ACTIVE BUFF:</span>
+                        <span id="active-buff-name" class="buff-text">NONE</span>
+                    </div>
+                    <div id="active-timers-list">
+                        <!-- Timers injected here -->
+                    </div>
+                    <div class="controls-hint">
+                        [←][→] MOVE<br>
+                        [SPACE] LAUNCH<br>
+                        [P] PAUSE
+                    </div>
+                </div>
+            </div>
+            <div id="victory-overlay" class="overlay hidden">
+                <div class="certificate">
+                    <h1 class="glitch" data-text="PROJECT DEPLOYED">PROJECT DEPLOYED</h1>
+                    <h2>SENIOR PM CERTIFIED</h2>
+                    <p>FINAL SCORE: <span id="final-score">00000</span></p>
+                    <button id="restart-game-btn" class="btn">NEW PROJECT</button>
+                </div>
+            </div>
+            <div id="game-over-overlay" class="overlay hidden">
+                <h1 class="glitch" data-text="SPRINT FAILED">SPRINT FAILED</h1>
+                <button id="retry-sprint-btn" class="btn">RETRY SPRINT</button>
+            </div>
+        </section>
+    </main>
+
+    <audio id="click-sound" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+    <script src="script.js"></script>
+</body>
+</html>
