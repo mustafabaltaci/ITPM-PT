@@ -347,14 +347,32 @@ const stageTitle = document.getElementById('current-stage-title');
 const scoreEl = document.getElementById('score');
 const rankEl = document.getElementById('rank');
 const clickSound = document.getElementById('click-sound');
+const playerAvatar = document.getElementById('player-avatar');
 
 document.querySelectorAll('.stage-node').forEach(node => {
     node.addEventListener('click', () => {
         const stageNum = parseInt(node.dataset.stage);
-        if (stageNum <= unlockedStages) startStage(stageNum);
-        else alert("STAGE LOCKED!");
+        if (stageNum <= unlockedStages) {
+            moveAvatar(stageNum, () => startStage(stageNum));
+        } else {
+            alert("STAGE LOCKED!");
+        }
     });
 });
+
+function moveAvatar(stageNum, callback) {
+    const targetNode = document.querySelector(`.stage-node[data-stage="${stageNum}"]`);
+    if (!targetNode) return;
+
+    playerAvatar.classList.add('walking');
+    playerAvatar.style.top = targetNode.style.top;
+    playerAvatar.style.left = targetNode.style.left;
+
+    setTimeout(() => {
+        playerAvatar.classList.remove('walking');
+        if (callback) callback();
+    }, 1500);
+}
 
 function startStage(num) {
     playClick();
@@ -559,12 +577,23 @@ document.getElementById('back-to-map').addEventListener('click', () => {
 document.getElementById('next-btn').addEventListener('click', () => {
     playClick();
     if (currentStage < 4) {
-        if (currentStage === unlockedStages) {
-            unlockedStages++;
-            updateMap();
+        const nextStage = currentStage + 1;
+        if (nextStage > unlockedStages) {
+            unlockedStages = nextStage;
             addScore(1000);
         }
-        startStage(currentStage + 1);
+        
+        // Show World Map first for the walk animation
+        contentScreen.classList.add('hidden');
+        worldMap.classList.remove('hidden');
+        updateMap();
+
+        // Delay slightly to ensure map is visible before animation
+        setTimeout(() => {
+            moveAvatar(nextStage, () => {
+                startStage(nextStage);
+            });
+        }, 100);
     } else {
         // Trigger Final Boss
         contentScreen.classList.add('hidden');
@@ -575,17 +604,45 @@ document.getElementById('next-btn').addEventListener('click', () => {
 
 document.getElementById('prev-btn').addEventListener('click', () => {
     playClick();
-    if (currentStage > 1) startStage(currentStage - 1);
+    if (currentStage > 1) {
+        const prevStage = currentStage - 1;
+        contentScreen.classList.add('hidden');
+        worldMap.classList.remove('hidden');
+        moveAvatar(prevStage, () => {
+            startStage(prevStage);
+        });
+    }
 });
 
 function updateMap() {
-    document.querySelectorAll('.stage-node').forEach(node => {
+    const nodes = document.querySelectorAll('.stage-node');
+    const paths = document.querySelectorAll('.path');
+
+    nodes.forEach(node => {
         const stageNum = parseInt(node.dataset.stage);
+        node.classList.remove('active', 'locked');
+        
         if (stageNum <= unlockedStages) {
-            node.classList.remove('locked');
-            if (stageNum === unlockedStages) node.classList.add('active');
+            if (stageNum === currentStage) node.classList.add('active');
+        } else {
+            node.classList.add('locked');
         }
     });
+
+    paths.forEach((path, index) => {
+        if (index < unlockedStages - 1) {
+            path.classList.add('unlocked');
+        } else {
+            path.classList.remove('unlocked');
+        }
+    });
+
+    // Initial avatar position
+    const currentNode = document.querySelector(`.stage-node[data-stage="${currentStage}"]`);
+    if (currentNode && !playerAvatar.classList.contains('walking')) {
+        playerAvatar.style.top = currentNode.style.top;
+        playerAvatar.style.left = currentNode.style.left;
+    }
 }
 
 function addScore(points) {
