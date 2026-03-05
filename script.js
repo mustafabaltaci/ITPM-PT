@@ -704,19 +704,20 @@ updateMap();
    BREAKOUT BOSS BATTLE ENGINE (V2.2)
    ========================================= */
 const BLOCK_TYPES = {
-    LEGACY: { color: '#BBBBBB', weight: 20000, power: null, name: 'LEGACY CODE' },
-    BUG: { color: '#FF0000', weight: 4000, power: 'shrink', duration: 12, name: 'CRITICAL BUG' },
-    JR_DEV: { color: '#BF40BF', weight: 3000, power: 'speed', duration: 15, name: 'JR DEV' },
-    QA: { color: '#FFFF00', weight: 2500, power: 'safetyNet', duration: 10, name: 'QA TESTER' },
-    MID_DEV: { color: '#00FF00', weight: 2000, power: 'split', duration: 0, name: 'MID DEV' },
-    DEVOPS: { color: '#40E0D0', weight: 1500, power: 'widePaddle', duration: 20, name: 'DEVOPS' },
-    SR_DEV: { color: '#FF69B4', weight: 1000, power: 'bigBall', duration: 20, name: 'SR DEV' },
-    PM: { color: '#0000FF', weight: 800, power: 'catch', duration: 15, name: 'PROJECT MGR' },
-    HR: { color: '#FFA500', weight: 600, power: 'extraBall', duration: 0, name: 'HR RECRUITER' },
-    CTO: { color: '#FFD700', weight: 400, power: 'fireball', duration: 8, name: 'CTO' },
-    TEN_X_DEV: { color: 'platinum', weight: 100, power: 'legendary', duration: 0, name: '10x ARCHITECT' }
+    LEGACY: { color: '#BBBBBB', weight: 20000, power: null, name: 'LEGACY CODE', desc: '' },
+    BUG: { color: '#FF0000', weight: 4000, power: 'shrink', duration: 12, name: 'CRITICAL BUG', desc: 'Sprints are tight! Paddle width reduced.' },
+    JR_DEV: { color: '#BF40BF', weight: 3000, power: 'speed', duration: 15, name: 'JR DEV', desc: 'Fast but messy! Ball velocity increased.' },
+    QA: { color: '#FFFF00', weight: 2500, power: 'safetyNet', duration: 10, name: 'QA TESTER', desc: 'Safety first! Floor bounce enabled.' },
+    MID_DEV: { color: '#00FF00', weight: 2000, power: 'split', duration: 0, name: 'MID DEV', desc: 'Collaboration! Ball splits in two.' },
+    DEVOPS: { color: '#40E0D0', weight: 1500, power: 'widePaddle', duration: 20, name: 'DEVOPS', desc: 'Scalability! Paddle width increased.' },
+    SR_DEV: { color: '#FF69B4', weight: 1000, power: 'bigBall', duration: 20, name: 'SR DEV', desc: 'Deep Impact! Ball size increased.' },
+    PM: { color: '#0000FF', weight: 800, power: 'catch', duration: 15, name: 'PROJECT MGR', desc: 'Micro-management! Catch ball on paddle.' },
+    HR: { color: '#FFA500', weight: 600, power: 'extraBall', duration: 0, name: 'HR RECRUITER', desc: 'New Hire! Extra ball added to pool.' },
+    CTO: { color: '#FFD700', weight: 400, power: 'fireball', duration: 8, name: 'CTO', desc: 'Burn the backlog! Ball pierces through blocks.' },
+    TEN_X_DEV: { color: 'platinum', weight: 100, power: 'legendary', duration: 0, name: '10x ARCHITECT', desc: 'Prophecy fulfilled! Automatic deployment.' }
 };
 
+let discoveredPowerUps = new Set();
 let gameLoop;
 let canvas, ctx;
 let paddle = { x: 0, y: 0, width: 150, height: 15, color: '#00f3ff', speed: 12 };
@@ -923,43 +924,66 @@ function handlePowerUpHit(block, type) {
     });
 }
 
-function triggerAnnouncement(text, legendary = false) {
-    announcementActive = true;
+function triggerAnnouncement(name, desc, legendary = false) {
+    const isNew = !discoveredPowerUps.has(name);
+    if (!isNew && !legendary) return; 
+
+    if (isNew) {
+        discoveredPowerUps.add(name);
+        announcementActive = true; 
+    }
+
     const el = document.getElementById('powerup-announcement');
-    el.innerText = text;
+    el.innerHTML = `<div style="font-size: 1.2rem; color: var(--neon-cyan)">${legendary ? 'ULTIMATE DEPLOYMENT' : 'NEW POWER-UP UNLOCKED!'}</div>
+                    <div style="margin: 10px 0;">${name}</div>
+                    <div style="font-size: 1.5rem; color: white; font-style: italic;">"${desc}"</div>`;
+    
     el.className = legendary ? 'legendary-text show' : 'show';
+
+    const pauseDuration = isNew ? 3000 : 1500;
+
     setTimeout(() => {
         el.classList.add('fly-to-panel');
         setTimeout(() => {
             el.className = '';
             announcementActive = false;
         }, 500);
-    }, 1500);
+    }, pauseDuration);
 }
 
 function activatePowerUp(type) {
-    const { power, duration, name } = type;
-    if (type.power === 'extraBall') { 
+    const { power, duration, name, desc } = type;
+    
+    const isNew = !discoveredPowerUps.has(name);
+    if (isNew || power === 'legendary') {
+        triggerAnnouncement(name, desc, power === 'legendary');
+    }
+
+    if (power === 'extraBall') { 
         balls.push({ x: paddle.x + paddle.width/2, y: paddle.y - 10, dx: 4, dy: -4, radius: 6, stuck: false }); 
         return; 
     }
 
-    triggerAnnouncement(name);
+    if (power === 'split') { 
+        const len = balls.length; 
+        for(let i=0; i<len; i++) balls.push({ ...balls[i], dx: -balls[i].dx, stuck: false }); 
+    }
+    else if (power === 'speed') {
+        if (!activeEffects['speed']) balls.forEach(b => { b.dx *= 1.5; b.dy *= 1.5; });
+    }
+    else if (power === 'bigBall') {
+        if (!activeEffects['bigBall']) balls.forEach(b => b.radius = 12);
+    }
+    else if (power === 'widePaddle') {
+        paddle.width = 250; 
+    }
+    else if (power === 'shrink') {
+        paddle.width = 60;
+    }
     
-    setTimeout(() => {
-        if (power === 'split') { 
-            const len = balls.length; 
-            for(let i=0; i<len; i++) balls.push({ ...balls[i], dx: -balls[i].dx, stuck: false }); 
-        }
-        else if (power === 'speed') balls.forEach(b => { b.dx *= 1.5; b.dy *= 1.5; });
-        else if (power === 'bigBall') balls.forEach(b => b.radius = 12);
-        else if (power === 'widePaddle') paddle.width = 150;
-        else if (power === 'shrink') paddle.width = 60;
-        
-        if (duration > 0) {
-            activeEffects[power] = { expires: Date.now() + duration * 1000, name, total: duration * 1000 };
-        }
-    }, 1500);
+    if (duration > 0) {
+        activeEffects[power] = { expires: Date.now() + duration * 1000, name, total: duration * 1000 };
+    }
 }
 
 function createConfetti() {
@@ -993,12 +1017,30 @@ function drawGame() {
         }
     });
 
-    // Draw Falling Power-ups
+    // Draw Falling Power-ups (Pixelated Teardrop)
     fallingPowerUps.forEach(p => {
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, p.size, p.size);
-        ctx.strokeStyle = '#fff';
-        ctx.strokeRect(p.x, p.y, p.size, p.size);
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = p.color;
+        
+        const px = p.x;
+        const py = p.y;
+        const s = p.size / 5; // Pixel size
+
+        // 5x5 Teardrop Pattern
+        const pattern = [
+            [2,0],
+            [1,1],[2,1],[3,1],
+            [0,2],[1,2],[2,2],[3,2],[4,2],
+            [0,3],[1,3],[2,3],[3,3],[4,3],
+            [1,4],[2,4],[3,4]
+        ];
+
+        pattern.forEach(([dx, dy]) => {
+            ctx.fillRect(px + dx*s, py + dy*s, s, s);
+        });
+        
+        ctx.shadowBlur = 0;
     });
 
     // Draw Particles
