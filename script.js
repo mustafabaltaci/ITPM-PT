@@ -701,34 +701,34 @@ function playClick() {
 updateMap();
 
 /* =========================================
-   BREAKOUT BOSS BATTLE ENGINE (V2.2)
+   BREAKOUT BOSS BATTLE ENGINE (V3.0)
    ========================================= */
 const BLOCK_TYPES = {
-    LEGACY: { color: '#BBBBBB', weight: 20000, power: null, name: 'LEGACY CODE', desc: '' },
-    BUG: { color: '#FF0000', weight: 4000, power: 'shrink', duration: 12, name: 'CRITICAL BUG', desc: 'Sprints are tight! Paddle width reduced.' },
-    JR_DEV: { color: '#BF40BF', weight: 3000, power: 'speed', duration: 15, name: 'JR DEV', desc: 'Fast but messy! Ball velocity increased.' },
-    QA: { color: '#FFFF00', weight: 2500, power: 'safetyNet', duration: 10, name: 'QA TESTER', desc: 'Safety first! Floor bounce enabled.' },
-    MID_DEV: { color: '#00FF00', weight: 2000, power: 'split', duration: 0, name: 'MID DEV', desc: 'Collaboration! Ball splits in two.' },
-    DEVOPS: { color: '#40E0D0', weight: 1500, power: 'widePaddle', duration: 20, name: 'DEVOPS', desc: 'Scalability! Paddle width increased.' },
-    SR_DEV: { color: '#FF69B4', weight: 1000, power: 'bigBall', duration: 20, name: 'SR DEV', desc: 'Deep Impact! Ball size increased.' },
-    PM: { color: '#0000FF', weight: 800, power: 'catch', duration: 15, name: 'PROJECT MGR', desc: 'Micro-management! Catch ball on paddle.' },
-    HR: { color: '#FFA500', weight: 600, power: 'extraBall', duration: 0, name: 'HR RECRUITER', desc: 'New Hire! Extra ball added to pool.' },
-    CTO: { color: '#FFD700', weight: 400, power: 'fireball', duration: 8, name: 'CTO', desc: 'Burn the backlog! Ball pierces through blocks.' },
-    TEN_X_DEV: { color: 'platinum', weight: 100, power: 'legendary', duration: 0, name: '10x ARCHITECT', desc: 'Prophecy fulfilled! Automatic deployment.' }
+    LEGACY: { color: '#BBBBBB', weight: 75, power: null, name: 'LEGACY CODE', desc: '' },
+    BUG: { color: '#FF0000', weight: 4, power: 'shrink', duration: 10, name: 'THE BUG', desc: 'TECH DEBT - Shrinks your paddle. Fix it before the sprint ends!' },
+    JR_DEV: { color: '#BF40BF', weight: 4, power: 'speed', duration: 12, name: 'JR. DEVELOPER', desc: 'FAST DEPLOY - Increases ball speed. High velocity, low control.' },
+    QA: { color: '#FFFF00', weight: 3, power: 'slow', duration: 10, name: 'QA TESTER', desc: 'STABILITY CHECK - Slows down the ball for precise bug hunting.' },
+    DEVOPS: { color: '#40E0D0', weight: 3, power: 'widePaddle', duration: 15, name: 'DEVOPS', desc: 'SCALING - Increases paddle size. Better infrastructure, more reach.' },
+    SCRUM: { color: '#0000FF', weight: 2, power: 'shields', duration: 8, name: 'SCRUM MASTER', desc: 'PROTECTION - Deploys 3 shield paddles at the bottom for 8s.' },
+    TNT: { color: '#FF6600', weight: 2, power: 'tnt', duration: 0, name: 'ARCHITECT (TNT)', desc: 'REFACTORING - Explodes on impact, clearing adjacent legacy code.' },
+    TEN_X: { color: '#FFD700', weight: 1, power: 'fireball', duration: 5, name: '10x DEVELOPER', desc: 'PERFORMANCE - Fireball mode. Pierces through all blocks for 5s.' },
+    PM: { color: '#00f3ff', weight: 1, power: 'catch', duration: 12, name: 'PM', desc: 'PRECISION - Sticky ball. Catch and launch towards mouse cursor.' }
 };
 
-let discoveredPowerUps = new Set();
+let discoveredRoles = new Set();
 let gameLoop;
 let canvas, ctx;
 let paddle = { x: 0, y: 0, width: 150, height: 15, color: '#00f3ff', speed: 12 };
 let balls = [];
 let blocks = [];
 let particles = [];
+let shields = [];
 let activeEffects = {};
 let lives = 3;
 let isPaused = false;
 let announcementActive = false;
-const pressedKeys = {}; // Frame-perfect input state
+const pressedKeys = {}; 
+let mousePos = { x: 0, y: 0 };
 
 let fallingPowerUps = [];
 
@@ -741,15 +741,19 @@ function startBreakoutGame() {
 
     document.getElementById('victory-overlay').classList.add('hidden');
     document.getElementById('game-over-overlay').classList.add('hidden');
+    document.getElementById('role-list').innerHTML = '';
+    discoveredRoles.clear();
 
     lives = 3;
-    balls = [{ x: canvas.width/2, y: canvas.height-30, dx: 2, dy: -2, radius: 6, stuck: true }];
+    balls = [{ x: canvas.width/2, y: canvas.height-30, dx: 3, dy: -3, radius: 6, stuck: true }];
     paddle.x = (canvas.width - paddle.width) / 2;
     paddle.y = canvas.height - 30;
+    paddle.width = 150;
     paddle.speed = 12;
     blocks = [];
     particles = [];
     fallingPowerUps = [];
+    shields = [];
     activeEffects = {};
     isPaused = false;
     announcementActive = false;
@@ -759,7 +763,6 @@ function startBreakoutGame() {
     if (gameLoop) cancelAnimationFrame(gameLoop);
     gameLoop = requestAnimationFrame(gameTick);
 
-    // Global Key State Listeners
     window.addEventListener('keydown', e => {
         pressedKeys[e.code] = true;
         if (e.code === 'Space') launchBall();
@@ -767,22 +770,23 @@ function startBreakoutGame() {
     });
     window.addEventListener('keyup', e => pressedKeys[e.code] = false);
 
-    // Pixel-Perfect Mouse Control
     canvas.addEventListener('mousemove', (e) => {
-        if (announcementActive || isPaused) return;
+        if (isPaused) return;
         const rect = canvas.getBoundingClientRect();
-        paddle.x = (e.clientX - rect.left) - paddle.width / 2;
+        mousePos.x = e.clientX - rect.left;
+        mousePos.y = e.clientY - rect.top;
+        paddle.x = mousePos.x - paddle.width / 2;
     });
     canvas.addEventListener('click', launchBall);
 }
 
 function createBlocks() {
-    const rows = 8, cols = 10, padding = 10;
+    const rows = 9, cols = 10, padding = 8;
     const width = (canvas.width - (padding * (cols + 1))) / cols;
-    const height = 25;
+    const height = 22;
     const pool = [];
     for (let key in BLOCK_TYPES) {
-        for (let i = 0; i < BLOCK_TYPES[key].weight / 100; i++) pool.push(BLOCK_TYPES[key]);
+        for (let i = 0; i < BLOCK_TYPES[key].weight; i++) pool.push(BLOCK_TYPES[key]);
     }
 
     for(let r=0; r<rows; r++) {
@@ -790,7 +794,7 @@ function createBlocks() {
             const type = pool[Math.floor(Math.random() * pool.length)];
             blocks.push({ 
                 x: c * (width + padding) + padding, 
-                y: r * (height + padding) + padding + 50, 
+                y: r * (height + padding) + padding + 60, 
                 width, 
                 height, 
                 type, 
@@ -801,11 +805,20 @@ function createBlocks() {
 }
 
 function launchBall() {
-    balls.forEach(b => { if (b.stuck) { b.stuck = false; b.dy = -Math.abs(b.dy); } });
+    balls.forEach(b => { 
+        if (b.stuck) { 
+            b.stuck = false; 
+            const angle = Math.atan2(mousePos.y - b.y, mousePos.x - b.x);
+            const speed = 4.5;
+            b.dx = speed * Math.cos(angle);
+            b.dy = speed * Math.sin(angle);
+            if (b.dy > -1) b.dy = -speed;
+        } 
+    });
 }
 
 function gameTick() {
-    if (!isPaused && !announcementActive) {
+    if (!isPaused) {
         handlePaddleMovement();
         updatePhysics();
     }
@@ -816,8 +829,6 @@ function gameTick() {
 function handlePaddleMovement() {
     if (pressedKeys['ArrowLeft']) paddle.x -= paddle.speed;
     if (pressedKeys['ArrowRight']) paddle.x += paddle.speed;
-    
-    // Boundary check
     if (paddle.x < 0) paddle.x = 0;
     if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
 }
@@ -826,68 +837,59 @@ function updatePhysics() {
     const now = Date.now();
     for (let key in activeEffects) {
         if (activeEffects[key].expires < now) {
-            if (key === 'speed') balls.forEach(b => { b.dx /= 1.5; b.dy /= 1.5; });
-            if (key === 'bigBall') balls.forEach(b => b.radius = 6);
+            if (key === 'speed') balls.forEach(b => { b.dx /= 1.6; b.dy /= 1.6; });
+            if (key === 'slow') balls.forEach(b => { b.dx *= 1.6; b.dy *= 1.6; });
             if (key === 'widePaddle' || key === 'shrink') paddle.width = 150;
+            if (key === 'shields') shields = [];
             delete activeEffects[key];
         }
     }
     updateTimersUI();
 
-    // Update Falling Power-ups
     fallingPowerUps.forEach((p, idx) => {
         p.y += p.speed;
-        
-        // Collection by Paddle
         if (p.y + p.size >= paddle.y && p.y <= paddle.y + paddle.height &&
             p.x + p.size >= paddle.x && p.x <= paddle.x + paddle.width) {
-            
             activatePowerUp(p.type);
             fallingPowerUps.splice(idx, 1);
             playClick();
         } 
-        // Off-screen
-        else if (p.y > canvas.height) {
-            fallingPowerUps.splice(idx, 1);
-        }
+        else if (p.y > canvas.height) fallingPowerUps.splice(idx, 1);
     });
 
     balls.forEach((b, idx) => {
         if (b.stuck) { b.x = paddle.x + paddle.width/2; b.y = paddle.y - b.radius; return; }
         b.x += b.dx; b.y += b.dy;
 
-        // Wall Bounces (Precise Boundaries)
         if (b.x + b.radius > canvas.width || b.x - b.radius < 0) { b.dx *= -1; b.x = Math.max(b.radius, Math.min(canvas.width - b.radius, b.x)); playClick(); }
         if (b.y - b.radius < 0) { b.dy *= -1; b.y = b.radius; playClick(); }
         
-        // Floor / Loss
+        // Shield collision
+        shields.forEach(s => {
+            if (b.y + b.radius >= s.y && b.y - b.radius <= s.y + s.height &&
+                b.x >= s.x && b.x <= s.x + s.width) {
+                b.dy = -Math.abs(b.dy);
+                playClick();
+            }
+        });
+
         if (b.y + b.radius > canvas.height) {
-            if (activeEffects['safetyNet']) {
-                b.dy *= -1; b.y = canvas.height - b.radius;
-            } else {
-                balls.splice(idx, 1);
-                if (balls.length === 0) {
-                    lives--;
-                    updateUI();
-                    if (lives > 0) balls.push({ x: paddle.x + paddle.width/2, y: paddle.y - 10, dx: 2, dy: -2, radius: 6, stuck: true });
-                    else endGame(false);
-                }
+            balls.splice(idx, 1);
+            if (balls.length === 0) {
+                lives--; updateUI();
+                if (lives > 0) balls.push({ x: paddle.x + paddle.width/2, y: paddle.y - 10, dx: 3, dy: -3, radius: 6, stuck: true });
+                else endGame(false);
             }
         }
 
-        // ADVANCED PADDLE PHYSICS (ANGLED BOUNCE)
         if (b.y + b.radius >= paddle.y && b.y - b.radius <= paddle.y + paddle.height &&
             b.x >= paddle.x && b.x <= paddle.x + paddle.width) {
-            
             b.dy = -Math.abs(b.dy);
             const hitPoint = (b.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
-            const maxAngle = Math.PI / 3; // 60 degrees max deflection
-            const bounceAngle = hitPoint * maxAngle;
-            
+            const bounceAngle = hitPoint * (Math.PI / 3);
             const currentSpeed = Math.sqrt(b.dx * b.dx + b.dy * b.dy);
             b.dx = currentSpeed * Math.sin(bounceAngle);
             b.dy = -currentSpeed * Math.cos(bounceAngle);
-
             if (activeEffects['catch']) b.stuck = true;
             playClick();
         }
@@ -905,80 +907,76 @@ function updatePhysics() {
 }
 
 function handlePowerUpHit(block, type) {
-    if (type.power === 'legendary') {
-        createConfetti();
-        blocks.forEach(b => b.active = false);
-        triggerAnnouncement("LEGENDARY ARCHITECT: INSTANT DEPLOYMENT!", true);
-        setTimeout(() => endGame(true), 2000);
+    if (type.power === 'tnt') {
+        const range = 1.5 * block.width; // Increased range for better effect
+        const centerX = block.x + block.width / 2;
+        const centerY = block.y + block.height / 2;
+        
+        blocks.forEach(b => {
+            if (b.active) {
+                const bCenterX = b.x + b.width / 2;
+                const bCenterY = b.y + b.height / 2;
+                const dist = Math.sqrt(Math.pow(bCenterX - centerX, 2) + Math.pow(bCenterY - centerY, 2));
+                if (dist < range) {
+                    b.active = false;
+                    addScore(25);
+                    for(let i=0; i<3; i++) particles.push({ x: bCenterX, y: bCenterY, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 20, color: '#FF6600' });
+                }
+            }
+        });
+        triggerDiscovery(type);
         return;
     }
     
-    // Spawn falling object instead of instant activation
     fallingPowerUps.push({
         x: block.x + block.width / 2 - 7,
         y: block.y,
         type: type,
         color: type.color,
-        speed: 2.5,
+        speed: 3,
         size: 15
     });
 }
 
-function triggerAnnouncement(name, desc, legendary = false) {
-    const isNew = !discoveredPowerUps.has(name);
-    if (!isNew && !legendary) return; 
+function triggerDiscovery(type) {
+    if (discoveredRoles.has(type.name)) return;
+    discoveredRoles.add(type.name);
 
-    if (isNew) {
-        discoveredPowerUps.add(name);
-        announcementActive = true; 
-    }
+    // Add card to Knowledge Base
+    const list = document.getElementById('role-list');
+    const card = document.createElement('div');
+    card.className = 'role-card';
+    card.innerHTML = `<h4>${type.name}</h4><p>${type.desc}</p>`;
+    list.prepend(card);
 
-    const el = document.getElementById('powerup-announcement');
-    el.innerHTML = `<div style="font-size: 1.2rem; color: var(--neon-cyan)">${legendary ? 'ULTIMATE DEPLOYMENT' : 'NEW POWER-UP UNLOCKED!'}</div>
-                    <div style="margin: 10px 0;">${name}</div>
-                    <div style="font-size: 1.5rem; color: white; font-style: italic;">"${desc}"</div>`;
-    
-    el.className = legendary ? 'legendary-text show' : 'show';
-
-    const pauseDuration = isNew ? 3000 : 1500;
-
-    setTimeout(() => {
-        el.classList.add('fly-to-panel');
-        setTimeout(() => {
-            el.className = '';
-            announcementActive = false;
-        }, 500);
-    }, pauseDuration);
+    // Glitch effect on right panel
+    const panel = document.getElementById('sprint-status-panel');
+    panel.classList.add('glitch-panel');
+    setTimeout(() => panel.classList.remove('glitch-panel'), 300);
 }
 
 function activatePowerUp(type) {
     const { power, duration, name, desc } = type;
-    
-    const isNew = !discoveredPowerUps.has(name);
-    if (isNew || power === 'legendary') {
-        triggerAnnouncement(name, desc, power === 'legendary');
-    }
+    triggerDiscovery(type);
 
-    if (power === 'extraBall') { 
-        balls.push({ x: paddle.x + paddle.width/2, y: paddle.y - 10, dx: 4, dy: -4, radius: 6, stuck: false }); 
-        return; 
+    if (power === 'speed') {
+        if (!activeEffects['speed']) balls.forEach(b => { b.dx *= 1.6; b.dy *= 1.6; });
     }
-
-    if (power === 'split') { 
-        const len = balls.length; 
-        for(let i=0; i<len; i++) balls.push({ ...balls[i], dx: -balls[i].dx, stuck: false }); 
-    }
-    else if (power === 'speed') {
-        if (!activeEffects['speed']) balls.forEach(b => { b.dx *= 1.5; b.dy *= 1.5; });
-    }
-    else if (power === 'bigBall') {
-        if (!activeEffects['bigBall']) balls.forEach(b => b.radius = 12);
+    else if (power === 'slow') {
+        if (!activeEffects['slow']) balls.forEach(b => { b.dx /= 1.6; b.dy /= 1.6; });
     }
     else if (power === 'widePaddle') {
-        paddle.width = 250; 
+        paddle.width = 240; 
     }
     else if (power === 'shrink') {
-        paddle.width = 60;
+        paddle.width = 80;
+    }
+    else if (power === 'shields') {
+        shields = [
+            { x: canvas.width * 0.1, y: canvas.height - 10, width: 80, height: 10 },
+            { x: canvas.width * 0.45, y: canvas.height - 10, width: 80, height: 10 },
+            { x: canvas.width * 0.8, y: canvas.height - 10, width: 80, height: 10 }
+        ];
     }
     
     if (duration > 0) {
@@ -986,65 +984,47 @@ function activatePowerUp(type) {
     }
 }
 
-function createConfetti() {
-    for (let i = 0; i < 100; i++) particles.push({ x: canvas.width/2, y: canvas.height/2, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, life: 100, color: `hsl(${Math.random()*360}, 100%, 50%)` });
-}
-
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw Paddle
     ctx.fillStyle = activeEffects['fireball'] ? '#FFD700' : paddle.color;
     ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
     
-    // Draw Balls
     balls.forEach(b => { 
         ctx.beginPath(); 
         ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); 
         ctx.fillStyle = activeEffects['fireball'] ? '#FF4500' : '#fff'; 
         ctx.fill(); 
+        if (activeEffects['fireball']) {
+            ctx.shadowBlur = 15; ctx.shadowColor = '#FF4500';
+            ctx.fill(); ctx.shadowBlur = 0;
+        }
     });
     
-    // Draw Blocks
     blocks.forEach(b => { 
         if (b.active) { 
-            if (b.type.color.includes('gradient')) {
-                let grad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y);
-                grad.addColorStop(0,'red'); grad.addColorStop(0.2,'orange'); grad.addColorStop(0.4,'yellow'); grad.addColorStop(0.6,'green'); grad.addColorStop(0.8,'blue'); grad.addColorStop(1,'violet');
-                ctx.fillStyle = grad;
-            } else ctx.fillStyle = b.type.color;
+            ctx.fillStyle = b.type.color;
             ctx.fillRect(b.x, b.y, b.width-2, b.height-2); 
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.strokeRect(b.x, b.y, b.width-2, b.height-2);
         }
     });
 
-    // Draw Falling Power-ups (Pixelated Teardrop)
-    fallingPowerUps.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = p.color;
-        
-        const px = p.x;
-        const py = p.y;
-        const s = p.size / 5; // Pixel size
-
-        // 5x5 Teardrop Pattern
-        const pattern = [
-            [2,0],
-            [1,1],[2,1],[3,1],
-            [0,2],[1,2],[2,2],[3,2],[4,2],
-            [0,3],[1,3],[2,3],[3,3],[4,3],
-            [1,4],[2,4],[3,4]
-        ];
-
-        pattern.forEach(([dx, dy]) => {
-            ctx.fillRect(px + dx*s, py + dy*s, s, s);
-        });
-        
+    shields.forEach(s => {
+        ctx.fillStyle = '#0000FF';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
+        ctx.fillRect(s.x, s.y, s.width, s.height);
         ctx.shadowBlur = 0;
     });
 
-    // Draw Particles
-    particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 4, 4); });
+    fallingPowerUps.forEach(p => {
+        ctx.fillStyle = p.color;
+        const s = p.size / 5;
+        const pattern = [[1,0],[1,1],[1,2],[0,2],[2,2],[1,3],[1,4]]; // 3x5 Pixel Drop
+        pattern.forEach(([dx, dy]) => ctx.fillRect(p.x + dx*s, p.y + dy*s, s, s));
+    });
+
+    particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 3, 3); });
 }
 
 function updateTimersUI() {
@@ -1057,7 +1037,6 @@ function updateTimersUI() {
         const pct = Math.max(0, (timeLeft / effect.total) * 100);
         const div = document.createElement('div');
         div.className = 'timer-bar-container';
-        if (timeLeft < 3000) div.style.animation = 'glitch 0.2s infinite';
         div.innerHTML = `<div class="timer-label">${effect.name} : ${(timeLeft/1000).toFixed(1)}s</div><div class="timer-bar-fill" style="width: ${pct}%"></div>`;
         list.appendChild(div);
     }
