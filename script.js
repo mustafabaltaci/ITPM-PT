@@ -735,6 +735,7 @@ let fallingPowerUps = [];
 let currentBaseTimer = 120; 
 let scopeWaveCount = 0; 
 let currentPhase = 1;
+let maxScopeWaves = currentPhase + 2;
 let scopeTimerFrames = currentBaseTimer * 60;
 
 function startBreakoutGame() {
@@ -755,6 +756,8 @@ function startBreakoutGame() {
         gameScore = 0;
         currentBaseTimer = 120;
     }
+
+    maxScopeWaves = currentPhase + 2;
 
     balls = [{ x: canvas.width/2, y: canvas.height-30, dx: 3, dy: -3, radius: 6, stuck: true }];
     paddle.x = (canvas.width - paddle.width) / 2;
@@ -845,7 +848,7 @@ function gameTick() {
         updatePhysics();
         
         // Scope Creep Timer
-        if (scopeWaveCount < 25) {
+        if (scopeWaveCount < maxScopeWaves) {
             scopeTimerFrames--;
             const activeBlocksCount = blocks.filter(b => b.active).length;
             if (scopeTimerFrames <= 0 || activeBlocksCount === 0) {
@@ -861,20 +864,20 @@ function gameTick() {
 function applyScopeCreep() {
     const brickHeight = 24;
     const brickPadding = 12;
-    const shiftY = brickHeight + brickPadding;
+    const shiftY = (brickHeight + brickPadding) * 3;
 
-    // Shift existing blocks down by exactly ONE row
+    // Shift existing blocks down by exactly THREE rows
     blocks.forEach(b => {
         if (b.active) {
             b.y += shiftY;
-            b.row++; 
-            if (b.y + b.height >= paddle.y) {
-                endGame(false);
+            b.row += 3; 
+            if (b.y + b.height >= paddle.y - 20) {
+                endGame(false); // Scope Overload
             }
         }
     });
 
-    // Spawn exactly ONE new row at the top
+    // Spawn exactly THREE new rows at the top
     const cols = 6, padding = 12;
     const totalPadding = padding * (cols + 1);
     const width = (canvas.width - totalPadding) / cols;
@@ -884,25 +887,25 @@ function applyScopeCreep() {
         for (let i = 0; i < BLOCK_TYPES[key].weight; i++) pool.push(BLOCK_TYPES[key]);
     }
 
-    const rowY = 60 + padding; 
-    for(let c=0; c<cols; c++) {
-        const type = pool[Math.floor(Math.random() * pool.length)];
-        blocks.push({ 
-            x: c * (width + padding) + padding, 
-            y: rowY, 
-            width, 
-            height, 
-            type, 
-            active: true,
-            row: 0,
-            col: c
-        });
+    for (let r = 0; r < 3; r++) {
+        const rowY = 60 + padding + (r * (height + padding));
+        for(let c=0; c<cols; c++) {
+            const type = pool[Math.floor(Math.random() * pool.length)];
+            blocks.push({ 
+                x: c * (width + padding) + padding, 
+                y: rowY, 
+                width, 
+                height, 
+                type, 
+                active: true,
+                row: r,
+                col: c
+            });
+        }
     }
 
     scopeWaveCount++;
-    if (scopeWaveCount < 25) {
-        currentBaseTimer = Math.max(10, currentBaseTimer - 1);
-    }
+    currentBaseTimer = Math.max(10, currentBaseTimer - 1);
     scopeTimerFrames = currentBaseTimer * 60;
 }
 
@@ -986,7 +989,7 @@ function updatePhysics() {
                 if (block.type.power) handlePowerUpHit(block, block.type);
                 
                 const activeBlocksCount = blocks.filter(bl => bl.active).length;
-                if (activeBlocksCount === 0 && scopeWaveCount >= 25) winPhase();
+                if (scopeWaveCount >= maxScopeWaves && activeBlocksCount === 0) winPhase();
             }
         });
     });
@@ -1144,8 +1147,8 @@ function updateUI() {
     document.getElementById('lives-display').innerText = lives; 
     
     const scopeTimerText = document.getElementById('scope-timer-text');
-    if (scopeWaveCount >= 25) {
-        scopeTimerText.innerText = "MAX";
+    if (scopeWaveCount >= maxScopeWaves) {
+        scopeTimerText.innerText = "NO MORE SCOPE CREEP";
         scopeTimerText.classList.remove('timer-blink');
     } else {
         const seconds = Math.ceil(scopeTimerFrames / 60);
