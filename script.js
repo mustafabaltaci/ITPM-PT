@@ -1165,12 +1165,32 @@ function updateUI() {
     document.getElementById('ui-score-display').innerText = gameScore;
 
     const scopeTimerText = document.getElementById('scope-timer-text');
+    const canvasEl = document.getElementById('breakout-canvas');
+    
     if (scopeWaveCount >= maxScopeWaves) {
         scopeTimerText.innerText = "NO MORE SCOPE CREEP";
         scopeTimerText.classList.remove('timer-blink');
+        canvasEl.classList.remove('border-warning', 'border-crisis');
+        canvasEl.classList.add('border-safe');
+        canvasEl.style.setProperty('--scope-duration', '20s');
     } else {
         const seconds = Math.ceil(scopeTimerFrames / 60);
         scopeTimerText.innerText = seconds;
+        
+        // Sync Border Colors
+        canvasEl.classList.remove('border-safe', 'border-warning', 'border-crisis');
+        if (seconds > 30) {
+            canvasEl.classList.add('border-safe');
+        } else if (seconds > 10) {
+            canvasEl.classList.add('border-warning');
+        } else {
+            canvasEl.classList.add('border-crisis');
+        }
+
+        // Sync Animation Speed
+        const animDuration = (scopeTimerFrames / (currentBaseTimer * 60)) * 20;
+        canvasEl.style.setProperty('--scope-duration', Math.max(0.5, animDuration) + 's');
+
         if (seconds <= 10) {
             scopeTimerText.classList.add('timer-blink');
         } else {
