@@ -6,6 +6,7 @@
     <title>PROJECT MANAGEMENT: ARCADE TRAINING</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
     <div class="scanlines"></div>
@@ -130,13 +131,19 @@
                     <h1 class="glitch" data-text="PROJECT DEPLOYED">PROJECT DEPLOYED</h1>
                     <h2>SENIOR PM CERTIFIED</h2>
                     <p>FINAL SCORE: <span id="final-score">00000</span></p>
-                    <button id="restart-game-btn" class="btn">NEW PROJECT</button>
+                    <div class="overlay-buttons">
+                        <button id="restart-game-btn" class="btn">NEW PROJECT</button>
+                        <button class="submit-score-btn btn neon-btn" onclick="sendScoreEmail(this)">SUBMIT FEEDBACK</button>
+                    </div>
                 </div>
             </div>
             <div id="game-over-overlay" class="overlay hidden">
                 <h1 class="glitch" data-text="SPRINT FAILED">SPRINT FAILED</h1>
                 <p>FINAL SCORE: <span id="game-over-score">00000</span></p>
-                <button id="retry-sprint-btn" class="btn">RETRY SPRINT</button>
+                <div class="overlay-buttons">
+                    <button id="retry-sprint-btn" class="btn">RETRY SPRINT</button>
+                    <button class="submit-score-btn btn neon-btn" onclick="sendScoreEmail(this)">SUBMIT FEEDBACK</button>
+                </div>
             </div>
         </section>
     </main>

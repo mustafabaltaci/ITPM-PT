@@ -338,6 +338,12 @@ const stages = {
 };
 
 let userData = { name: '', studentId: '' };
+let playerName = '';
+let playerStudentId = '';
+
+// Initialize EmailJS
+emailjs.init("hWdYLqSWcPqXtxxF3");
+
 let currentStage = 1;
 let unlockedStages = 1;
 let educationScore = 0;
@@ -362,6 +368,8 @@ document.getElementById('start-btn').addEventListener('click', () => {
     if (name && id) {
         userData.name = name;
         userData.studentId = id;
+        playerName = name;
+        playerStudentId = id;
         localStorage.setItem('pm_arcade_user', JSON.stringify(userData));
         document.getElementById('display-name').innerText = name.toUpperCase();
         playClick();
@@ -379,10 +387,44 @@ window.addEventListener('load', () => {
     const savedUser = localStorage.getItem('pm_arcade_user');
     if (savedUser) {
         userData = JSON.parse(savedUser);
+        playerName = userData.name;
+        playerStudentId = userData.studentId;
         document.getElementById('user-name').value = userData.name;
         document.getElementById('user-id').value = userData.studentId;
     }
 });
+
+// Telemetry Submission Function
+function sendScoreEmail(buttonElement) {
+    // Calculate final score
+    let totalPoint = educationScore + gameScore;
+    // Get exact Turkish timestamp
+    let timeStamp = new Date().toLocaleString('tr-TR');
+
+    // Prepare payload
+    const templateParams = {
+        name: playerName,
+        studentId: playerStudentId,
+        totalPoint: totalPoint,
+        timeStamp: timeStamp
+    };
+
+    // UI Feedback: Disable button and show sending status
+    buttonElement.innerText = "SENDING...";
+    buttonElement.disabled = true;
+
+    // Execute EmailJS Send using live Service ID and Template ID
+    emailjs.send('service_atns4bp', 'template_a1h2o49', templateParams)
+        .then(function(response) {
+            buttonElement.innerText = "DEPLOYED (SENT)";
+            buttonElement.style.color = "var(--neon-cyan)";
+        }, function(error) {
+            buttonElement.innerText = "FAILED! RETRY";
+            buttonElement.disabled = false;
+            buttonElement.style.color = "var(--neon-magenta)";
+            console.log('EmailJS Error:', error);
+        });
+}
 
 document.querySelectorAll('.stage-node').forEach(node => {
     node.addEventListener('click', () => {

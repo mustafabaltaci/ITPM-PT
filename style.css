@@ -956,6 +956,24 @@ th { background: rgba(255, 0, 255, 0.2); color: var(--neon-magenta); }
 .certificate h1 { font-size: 4rem; margin-bottom: 10px; }
 .certificate h2 { color: var(--neon-cyan); margin-bottom: 30px; }
 
+.overlay-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.submit-score-btn {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.submit-score-btn:hover {
+    background: var(--neon-cyan);
+    color: black;
+    box-shadow: 0 0 15px var(--neon-cyan);
+}
+
 /* POWER-UP ANNOUNCEMENT */
 #powerup-announcement {
     position: absolute;
