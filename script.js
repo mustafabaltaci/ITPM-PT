@@ -416,6 +416,7 @@ function startStage(num) {
     contentArea.innerHTML = stages[num].content;
     worldMap.classList.add('hidden');
     contentScreen.classList.remove('hidden');
+    document.getElementById('mission-status-bar').classList.add('hidden');
     contentArea.scrollTop = 0;
     updateButtons();
 
@@ -745,7 +746,9 @@ function startBreakoutGame() {
     canvas.width = wrapper.clientWidth - 250;
     canvas.height = wrapper.clientHeight;
 
+    document.getElementById('mission-status-bar').classList.remove('hidden');
     document.getElementById('victory-overlay').classList.add('hidden');
+    document.getElementById('game-over-overlay').classList.add('hidden');
     document.getElementById('game-over-overlay').classList.add('hidden');
     
     // Initial reset logic
@@ -1046,6 +1049,17 @@ function triggerDiscovery(type) {
     list.prepend(card);
 
     const panel = document.getElementById('sprint-status-panel');
+    const kb = document.getElementById('knowledge-base');
+    
+    // Categorize Buff vs Debuff for visual feedback
+    if (type.power === 'shrink') {
+        kb.classList.add('flash-red');
+        setTimeout(() => kb.classList.remove('flash-red'), 600);
+    } else {
+        kb.classList.add('flash-green');
+        setTimeout(() => kb.classList.remove('flash-green'), 600);
+    }
+
     panel.classList.add('glitch-panel');
     setTimeout(() => panel.classList.remove('glitch-panel'), 300);
 }
@@ -1146,6 +1160,10 @@ function updateUI() {
     document.getElementById('boss-lives').innerText = "★".repeat(lives); 
     document.getElementById('lives-display').innerText = lives; 
     
+    // Update Sub-Header
+    document.getElementById('ui-phase-display').innerText = currentPhase;
+    document.getElementById('ui-score-display').innerText = gameScore;
+
     const scopeTimerText = document.getElementById('scope-timer-text');
     if (scopeWaveCount >= maxScopeWaves) {
         scopeTimerText.innerText = "NO MORE SCOPE CREEP";
