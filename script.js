@@ -781,9 +781,10 @@ function startBreakoutGame() {
 }
 
 function createBlocks() {
-    const rows = 9, cols = 10, padding = 8;
-    const width = (canvas.width - (padding * (cols + 1))) / cols;
-    const height = 22;
+    const rows = 9, cols = 6, padding = 12;
+    const totalPadding = padding * (cols + 1);
+    const width = (canvas.width - totalPadding) / cols;
+    const height = 24;
     const pool = [];
     for (let key in BLOCK_TYPES) {
         for (let i = 0; i < BLOCK_TYPES[key].weight; i++) pool.push(BLOCK_TYPES[key]);
@@ -908,7 +909,7 @@ function updatePhysics() {
 
 function handlePowerUpHit(block, type) {
     if (type.power === 'tnt') {
-        const range = 1.5 * block.width; // Increased range for better effect
+        const range = 1.8 * block.width; // Adjusted range for 6-column layout
         const centerX = block.x + block.width / 2;
         const centerY = block.y + block.height / 2;
         
@@ -972,10 +973,11 @@ function activatePowerUp(type) {
         paddle.width = 80;
     }
     else if (power === 'shields') {
+        const shieldWidth = paddle.width * 1.5;
         shields = [
-            { x: canvas.width * 0.1, y: canvas.height - 10, width: 80, height: 10 },
-            { x: canvas.width * 0.45, y: canvas.height - 10, width: 80, height: 10 },
-            { x: canvas.width * 0.8, y: canvas.height - 10, width: 80, height: 10 }
+            { x: canvas.width * 0.05, y: canvas.height - 10, width: shieldWidth, height: 10 },
+            { x: canvas.width * 0.40, y: canvas.height - 10, width: shieldWidth, height: 10 },
+            { x: canvas.width * 0.75, y: canvas.height - 10, width: shieldWidth, height: 10 }
         ];
     }
     
@@ -987,8 +989,15 @@ function activatePowerUp(type) {
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Draw SCI-FI Paddle
+    ctx.save();
     ctx.fillStyle = activeEffects['fireball'] ? '#FFD700' : paddle.color;
-    ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00f3ff';
+    ctx.beginPath();
+    ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, 10);
+    ctx.fill();
+    ctx.restore();
     
     balls.forEach(b => { 
         ctx.beginPath(); 
@@ -1011,10 +1020,8 @@ function drawGame() {
     });
 
     shields.forEach(s => {
-        ctx.fillStyle = '#0000FF';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
+        ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
         ctx.fillRect(s.x, s.y, s.width, s.height);
-        ctx.shadowBlur = 0;
     });
 
     fallingPowerUps.forEach(p => {
