@@ -131,6 +131,14 @@
                     <h1 class="glitch" data-text="PROJECT DEPLOYED">PROJECT DEPLOYED</h1>
                     <h2>SENIOR PM CERTIFIED</h2>
                     <p>FINAL SCORE: <span id="final-score">00000</span></p>
+                    
+                    <div class="leaderboard-container">
+                        <h3>🏆 TOP PROJECT MANAGERS</h3>
+                        <ul class="leaderboard-list">
+                            <li>Loading server data...</li>
+                        </ul>
+                    </div>
+
                     <div class="overlay-buttons">
                         <button id="restart-game-btn" class="btn">NEW PROJECT</button>
                         <button class="submit-score-btn btn neon-btn" onclick="sendScoreEmail(this)">SUBMIT FEEDBACK</button>
@@ -140,6 +148,14 @@
             <div id="game-over-overlay" class="overlay hidden">
                 <h1 class="glitch" data-text="SPRINT FAILED">SPRINT FAILED</h1>
                 <p>FINAL SCORE: <span id="game-over-score">00000</span></p>
+
+                <div class="leaderboard-container">
+                    <h3>🏆 TOP PROJECT MANAGERS</h3>
+                    <ul class="leaderboard-list">
+                        <li>Loading server data...</li>
+                    </ul>
+                </div>
+
                 <div class="overlay-buttons">
                     <button id="retry-sprint-btn" class="btn">RETRY SPRINT</button>
                     <button class="submit-score-btn btn neon-btn" onclick="sendScoreEmail(this)">SUBMIT FEEDBACK</button>

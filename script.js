@@ -401,8 +401,8 @@ function sendScoreEmail(buttonElement) {
     // Get exact Turkish timestamp
     let timeStamp = new Date().toLocaleString('tr-TR');
 
-    // Prepare payload
-    const templateParams = {
+    // Prepare a single payload for BOTH services
+    const payload = {
         name: playerName,
         studentId: playerStudentId,
         totalPoint: totalPoint,
@@ -410,19 +410,70 @@ function sendScoreEmail(buttonElement) {
     };
 
     // UI Feedback: Disable button and show sending status
-    buttonElement.innerText = "SENDING...";
+    buttonElement.innerText = "DEPLOYING TO ALL...";
     buttonElement.disabled = true;
 
-    // Execute EmailJS Send using live Service ID and Template ID
-    emailjs.send('service_atns4bp', 'template_a1h2o49', templateParams)
-        .then(function(response) {
-            buttonElement.innerText = "DEPLOYED (SENT)";
+    // 1. Prepare Google Sheets Request (JSON YERİNE FORM DATA)
+    const formData = new URLSearchParams();
+    formData.append('name', payload.name);
+    formData.append('studentId', payload.studentId);
+    formData.append('totalPoint', payload.totalPoint);
+    formData.append('timeStamp', payload.timeStamp);
+
+    const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbzYBh7FT3zCfyShWchd_jGmD5NlUW9rwqC4c7Sik4empEzT_IMM_d8SFTddsJFpBg4I/exec';
+    
+    const sheetsPromise = fetch(googleScriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        // headers kısmını tamamen SİLDİK, formData kendi halledecek
+        body: formData 
+    });
+
+    // 2. Prepare EmailJS Request (Senin template ID'n ile)
+    const emailPromise = emailjs.send('service_atns4bp', 'template_wah5gs6', payload);
+
+    // 3. Execute Both Concurrently
+    Promise.all([sheetsPromise, emailPromise])
+        .then(() => {
+            // Both succeeded
+            buttonElement.innerText = "DEPLOYED (EMAIL & DB)";
             buttonElement.style.color = "var(--neon-cyan)";
-        }, function(error) {
-            buttonElement.innerText = "FAILED! RETRY";
+            // Refresh leaderboard after successful deploy
+            setTimeout(loadLeaderboard, 2000);
+        })
+        .catch((error) => {
+            buttonElement.innerText = "PARTIAL FAIL! RETRY";
             buttonElement.disabled = false;
             buttonElement.style.color = "var(--neon-magenta)";
-            console.log('EmailJS Error:', error);
+            console.error('Dual-Deployment Error:', error);
+        });
+}
+
+function loadLeaderboard() {
+    const lists = document.querySelectorAll('.leaderboard-list');
+    lists.forEach(list => list.innerHTML = "<li>Connecting to Database...</li>");
+
+    const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbzYBh7FT3zCfyShWchd_jGmD5NlUW9rwqC4c7Sik4empEzT_IMM_d8SFTddsJFpBg4I/exec';
+
+    fetch(googleScriptUrl)
+        .then(response => response.json())
+        .then(data => {
+            // Sort by totalPoint descending
+            data.sort((a, b) => b.totalPoint - a.totalPoint);
+            // Grab top 5
+            const top5 = data.slice(0, 5);
+
+            lists.forEach(list => {
+                list.innerHTML = ""; // Clear loading text
+                top5.forEach((player, index) => {
+                    // Format list item
+                    list.innerHTML += `<li><span>#${index + 1} ${player.name}</span> <span class="rank-score">${player.totalPoint} PTS</span></li>`;
+                });
+            });
+        })
+        .catch(error => {
+            console.error('Leaderboard Fetch Error:', error);
+            lists.forEach(list => list.innerHTML = "<li>Failed to load rankings.</li>");
         });
 }
 
@@ -1257,6 +1308,9 @@ function endGame(win) {
     isPaused = true;
     totalPoint = educationScore + gameScore;
     const scoreStr = totalPoint.toString().padStart(5, '0');
+    
+    // Load Leaderboard data from Google Sheets
+    loadLeaderboard();
     
     if (win) { 
         const victoryOverlay = document.getElementById('victory-overlay');
