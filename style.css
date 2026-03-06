@@ -557,10 +557,18 @@ th { background: rgba(255, 0, 255, 0.2); color: var(--neon-magenta); }
     border: 1px dashed var(--neon-cyan);
 }
 
-.game-controls {
+.team-game-controls {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
-    gap: 20px;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-category {
+    min-width: 180px;
+    font-size: 1.1rem;
+    padding: 8px 15px;
 }
 
 .flash-green { animation: flash-green 0.5s; }

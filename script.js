@@ -241,9 +241,12 @@ const stages = {
                     <div class="spirit-bar-fill" id="spirit-fill"></div>
                 </div>
                 <div class="attribute-card-display" id="attribute-display">CLICK START TO BEGIN</div>
-                <div class="game-controls">
-                    <button class="btn" id="btn-workgroup">WORK GROUP</button>
-                    <button class="btn" id="btn-realteam">REAL TEAM</button>
+                <div class="game-controls team-game-controls">
+                    <button class="btn btn-category" data-type="pseudoteam">PSEUDO-TEAM</button>
+                    <button class="btn btn-category" data-type="potentialteam">POTENTIAL TEAM</button>
+                    <button class="btn btn-category" data-type="workgroup">WORK GROUP</button>
+                    <button class="btn btn-category" data-type="realteam">REAL TEAM</button>
+                    <button class="btn btn-category" data-type="highperformance">HIGH-PERFORMANCE</button>
                 </div>
                 <div id="badge-unlock" class="badge-unlock">🏆 TEAM SYNERGY ACHIEVED! +100 EXP</div>
             </div>
@@ -608,48 +611,103 @@ function initStage2Game() {
     });
 }
 
+// Utility: Fisher-Yates Shuffle
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
 // STAGE 3 GAME
 function initStage3Game() {
-    const attributes = [
-        { text: "Mutual Accountability", type: "realteam" },
+    let attributes = [
+        // 1. Working Group
+        { text: "Individual Accountability", type: "workgroup" },
+        { text: "Strong, Focused Leader", type: "workgroup" },
         { text: "Individual Work Products", type: "workgroup" },
-        { text: "Common Purpose", type: "realteam" },
-        { text: "No Positive Synergy", type: "workgroup" },
-        { text: "Shared Goals", type: "realteam" },
-        { text: "Functional Goals", type: "workgroup" }
+        { text: "Efficient Meetings", type: "workgroup" },
+    
+        // 2. Pseudo-Team
+        { text: "No Common Purpose", type: "pseudoteam" },
+        { text: "Lower Output Than Individual Sum", type: "pseudoteam" },
+        { text: "Pretend to Collaborate", type: "pseudoteam" },
+        { text: "Interpersonal Conflicts", type: "pseudoteam" },
+    
+        // 3. Potential Team
+        { text: "Trying to Define Common Goals", type: "potentialteam" },
+        { text: "Developing Shared Discipline", type: "potentialteam" },
+        { text: "Needs Better Purpose Clarity", type: "potentialteam" },
+        { text: "Early Stages of Collaboration", type: "potentialteam" },
+    
+        // 4. Real Team
+        { text: "Mutual Accountability", type: "realteam" },
+        { text: "Collective Work Products", type: "realteam" },
+        { text: "Shared Leadership Roles", type: "realteam" },
+        { text: "Common Commitment", type: "realteam" },
+    
+        // 5. High-Performance Team
+        { text: "Deep Commitment to Growth", type: "highperformance" },
+        { text: "Results Far Exceed Expectations", type: "highperformance" },
+        { text: "Highly Synchronized Collaboration", type: "highperformance" },
+        { text: "Personal Commitment to Success", type: "highperformance" }
     ];
+
+    shuffle(attributes);
+    
     let currentIdx = 0, correctCount = 0;
+    const totalAttributes = attributes.length;
     const display = document.getElementById('attribute-display');
     const fill = document.getElementById('spirit-fill');
     const gameBox = document.getElementById('team-game');
     const badge = document.getElementById('badge-unlock');
+
     const updateDisplay = () => {
-        if (currentIdx < attributes.length) display.innerText = attributes[currentIdx].text;
-        else if (correctCount >= 6) {
-            display.innerText = "MAX SPIRIT ACHIEVED!";
-            badge.style.display = "block";
-            addScore(100, false);
+        if (currentIdx < totalAttributes) {
+            display.innerText = attributes[currentIdx].text;
+        } else {
+            display.innerText = "TEAM CALIBRATION COMPLETE!";
+            if (correctCount >= totalAttributes * 0.8) {
+                badge.style.display = "block";
+                badge.innerText = `🏆 SYNERGY ACHIEVED: ${correctCount}/${totalAttributes} CORRECT!`;
+                addScore(200, false);
+            } else {
+                display.innerText = "TRAINING COMPLETE. ROOM FOR GROWTH.";
+            }
         }
     };
+
     const handleChoice = (choice) => {
-        if (currentIdx >= attributes.length) return;
-        const isCorrect = choice === attributes[currentIdx].type;
+        if (currentIdx >= totalAttributes) return;
+        
+        const correctType = attributes[currentIdx].type;
+        const isCorrect = choice === correctType;
+        
         gameBox.classList.remove('flash-green', 'flash-red');
-        void gameBox.offsetWidth;
+        void gameBox.offsetWidth; // Trigger reflow
+
         if (isCorrect) {
             gameBox.classList.add('flash-green');
-            correctCount++; currentIdx++;
-            addScore(50, false);
-            fill.style.width = (correctCount / 6 * 100) + "%";
+            correctCount++;
+            let points = correctType === 'highperformance' ? 75 : 50;
+            if (correctType === 'pseudoteam') points = 30; // Identifying a negative distractor
+            addScore(points, false);
             playClick();
         } else {
             gameBox.classList.add('flash-red');
-            addScore(-20, false);
+            addScore(-25, false);
         }
+        
+        currentIdx++;
+        fill.style.width = (currentIdx / totalAttributes * 100) + "%";
         updateDisplay();
     };
-    document.getElementById('btn-workgroup').onclick = () => handleChoice('workgroup');
-    document.getElementById('btn-realteam').onclick = () => handleChoice('realteam');
+
+    document.querySelectorAll('.btn-category').forEach(btn => {
+        btn.onclick = () => handleChoice(btn.dataset.type);
+    });
+
     updateDisplay();
 }
 
