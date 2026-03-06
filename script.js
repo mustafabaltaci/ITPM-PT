@@ -747,11 +747,12 @@ function startBreakoutGame() {
     document.getElementById('victory-overlay').classList.add('hidden');
     document.getElementById('game-over-overlay').classList.add('hidden');
     
-    // Only reset these if it's NOT a phase transition
+    // Initial reset logic
     if (scopeWaveCount === 0 && currentPhase === 1) {
         document.getElementById('role-list').innerHTML = '';
         discoveredRoles.clear();
         lives = 3;
+        gameScore = 0;
         currentBaseTimer = 120;
     }
 
@@ -817,7 +818,9 @@ function createBlocks() {
                 width, 
                 height, 
                 type, 
-                active: true 
+                active: true,
+                row: r,
+                col: c
             });
         }
     }
@@ -850,6 +853,7 @@ function gameTick() {
             }
         }
     }
+    updateUI(); 
     drawGame();
     gameLoop = requestAnimationFrame(gameTick);
 }
@@ -863,7 +867,7 @@ function applyScopeCreep() {
     blocks.forEach(b => {
         if (b.active) {
             b.y += shiftY;
-            // Danger Zone Check
+            b.row++; 
             if (b.y + b.height >= paddle.y) {
                 endGame(false);
             }
@@ -880,7 +884,7 @@ function applyScopeCreep() {
         for (let i = 0; i < BLOCK_TYPES[key].weight; i++) pool.push(BLOCK_TYPES[key]);
     }
 
-    const rowY = 60 + padding; // Top row Y position
+    const rowY = 60 + padding; 
     for(let c=0; c<cols; c++) {
         const type = pool[Math.floor(Math.random() * pool.length)];
         blocks.push({ 
@@ -889,7 +893,9 @@ function applyScopeCreep() {
             width, 
             height, 
             type, 
-            active: true 
+            active: true,
+            row: 0,
+            col: c
         });
     }
 
@@ -898,7 +904,6 @@ function applyScopeCreep() {
         currentBaseTimer = Math.max(10, currentBaseTimer - 1);
     }
     scopeTimerFrames = currentBaseTimer * 60;
-    updateUI();
 }
 
 function handlePaddleMovement() {
@@ -939,7 +944,6 @@ function updatePhysics() {
         if (b.x + b.radius > canvas.width || b.x - b.radius < 0) { b.dx *= -1; b.x = Math.max(b.radius, Math.min(canvas.width - b.radius, b.x)); playClick(); }
         if (b.y - b.radius < 0) { b.dy *= -1; b.y = b.radius; playClick(); }
         
-        // Shield collision
         shields.forEach(s => {
             if (b.y + b.radius >= s.y && b.y - b.radius <= s.y + s.height &&
                 b.x >= s.x && b.x <= s.x + s.width) {
@@ -949,11 +953,17 @@ function updatePhysics() {
         });
 
         if (b.y + b.radius > canvas.height) {
-            balls.splice(idx, 1);
-            if (balls.length === 0) {
-                lives--; updateUI();
-                if (lives > 0) balls.push({ x: paddle.x + paddle.width/2, y: paddle.y - 10, dx: 3, dy: -3, radius: 6, stuck: true });
-                else endGame(false);
+            lives--;
+            if (lives > 0) {
+                b.x = paddle.x + paddle.width / 2;
+                b.y = paddle.y - b.radius - 5;
+                b.dx = 3;
+                b.dy = -3;
+                b.stuck = true;
+                playClick();
+            } else {
+                balls.splice(idx, 1);
+                if (balls.length === 0) endGame(false);
             }
         }
 
@@ -975,7 +985,6 @@ function updatePhysics() {
                 block.active = false; addScore(50, true); playClick();
                 if (block.type.power) handlePowerUpHit(block, block.type);
                 
-                // Win Condition Check
                 const activeBlocksCount = blocks.filter(bl => bl.active).length;
                 if (activeBlocksCount === 0 && scopeWaveCount >= 25) winPhase();
             }
@@ -990,19 +999,22 @@ function winPhase() {
 
 function handlePowerUpHit(block, type) {
     if (type.power === 'tnt') {
-        const range = 1.8 * block.width; // Adjusted range for 6-column layout
-        const centerX = block.x + block.width / 2;
-        const centerY = block.y + block.height / 2;
+        const hitCol = block.col;
+        const hitRow = block.row;
         
         blocks.forEach(b => {
             if (b.active) {
-                const bCenterX = b.x + b.width / 2;
-                const bCenterY = b.y + b.height / 2;
-                const dist = Math.sqrt(Math.pow(bCenterX - centerX, 2) + Math.pow(bCenterY - centerY, 2));
-                if (dist < range) {
+                if (Math.abs(b.col - hitCol) <= 2 && Math.abs(b.row - hitRow) <= 2) {
                     b.active = false;
-                    addScore(25, true);
-                    for(let i=0; i<3; i++) particles.push({ x: bCenterX, y: bCenterY, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 20, color: '#FF6600' });
+                    addScore(50, true); 
+                    particles.push({ 
+                        x: b.x + b.width/2, 
+                        y: b.y + b.height/2, 
+                        vx: (Math.random()-0.5)*5, 
+                        vy: (Math.random()-0.5)*5, 
+                        life: 20, 
+                        color: '#FF6600' 
+                    });
                 }
             }
         });
@@ -1024,14 +1036,12 @@ function triggerDiscovery(type) {
     if (discoveredRoles.has(type.name)) return;
     discoveredRoles.add(type.name);
 
-    // Add card to Knowledge Base
     const list = document.getElementById('role-list');
     const card = document.createElement('div');
     card.className = 'role-card';
     card.innerHTML = `<h4>${type.name}</h4><p>${type.desc}</p>`;
     list.prepend(card);
 
-    // Glitch effect on right panel
     const panel = document.getElementById('sprint-status-panel');
     panel.classList.add('glitch-panel');
     setTimeout(() => panel.classList.remove('glitch-panel'), 300);
@@ -1070,7 +1080,6 @@ function activatePowerUp(type) {
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw SCI-FI Paddle
     ctx.save();
     ctx.fillStyle = activeEffects['fireball'] ? '#FFD700' : paddle.color;
     ctx.shadowBlur = 15;
@@ -1108,7 +1117,7 @@ function drawGame() {
     fallingPowerUps.forEach(p => {
         ctx.fillStyle = p.color;
         const s = p.size / 5;
-        const pattern = [[1,0],[1,1],[1,2],[0,2],[2,2],[1,3],[1,4]]; // 3x5 Pixel Drop
+        const pattern = [[1,0],[1,1],[1,2],[0,2],[2,2],[1,3],[1,4]]; 
         pattern.forEach(([dx, dy]) => ctx.fillRect(p.x + dx*s, p.y + dy*s, s, s));
     });
 
@@ -1132,6 +1141,7 @@ function updateTimersUI() {
 
 function updateUI() { 
     document.getElementById('boss-lives').innerText = "★".repeat(lives); 
+    document.getElementById('lives-display').innerText = lives; 
     
     const scopeTimerText = document.getElementById('scope-timer-text');
     if (scopeWaveCount >= 25) {
@@ -1146,6 +1156,18 @@ function updateUI() {
             scopeTimerText.classList.remove('timer-blink');
         }
     }
+}
+
+function addScore(points, isGameScore = false) {
+    if (isGameScore) {
+        gameScore += points;
+    } else {
+        educationScore += points;
+    }
+    
+    let displayScore = educationScore + gameScore;
+    scoreEl.innerText = displayScore.toString().padStart(5, '0');
+    if (displayScore >= 1200) rankEl.innerText = "SENIOR PM";
 }
 
 function endGame(win) {
@@ -1169,8 +1191,12 @@ function endGame(win) {
 
 document.getElementById('retry-sprint-btn').onclick = () => {
     document.getElementById('game-over-overlay').classList.add('hidden');
-    gameScore = 0; // Reset game score only
-    addScore(0, true); // Update UI display
+    lives = 3;
+    gameScore = 0;
+    scopeWaveCount = 0;
+    currentBaseTimer = 120;
+    scopeTimerFrames = currentBaseTimer * 60;
+    addScore(0, true);
     startBreakoutGame();
 };
 
