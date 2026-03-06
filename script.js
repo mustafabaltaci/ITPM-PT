@@ -732,6 +732,12 @@ let mousePos = { x: 0, y: 0 };
 
 let fallingPowerUps = [];
 
+// WAVE & PHASE SYSTEM
+let currentBaseTimer = 60; 
+let scopeWaveCount = 0; 
+let currentPhase = 1;
+let scopeTimerFrames = currentBaseTimer * 60;
+
 function startBreakoutGame() {
     canvas = document.getElementById('breakout-canvas');
     ctx = canvas.getContext('2d');
@@ -741,10 +747,15 @@ function startBreakoutGame() {
 
     document.getElementById('victory-overlay').classList.add('hidden');
     document.getElementById('game-over-overlay').classList.add('hidden');
-    document.getElementById('role-list').innerHTML = '';
-    discoveredRoles.clear();
+    
+    // Only reset these if it's NOT a phase transition
+    if (scopeWaveCount === 0 && currentPhase === 1) {
+        document.getElementById('role-list').innerHTML = '';
+        discoveredRoles.clear();
+        lives = 3;
+        currentBaseTimer = 60;
+    }
 
-    lives = 3;
     balls = [{ x: canvas.width/2, y: canvas.height-30, dx: 3, dy: -3, radius: 6, stuck: true }];
     paddle.x = (canvas.width - paddle.width) / 2;
     paddle.y = canvas.height - 30;
@@ -757,31 +768,39 @@ function startBreakoutGame() {
     activeEffects = {};
     isPaused = false;
     announcementActive = false;
+    scopeTimerFrames = currentBaseTimer * 60;
     
     createBlocks();
     updateUI();
     if (gameLoop) cancelAnimationFrame(gameLoop);
     gameLoop = requestAnimationFrame(gameTick);
 
-    window.addEventListener('keydown', e => {
-        pressedKeys[e.code] = true;
-        if (e.code === 'Space') launchBall();
-        if (e.code === 'KeyP') isPaused = !isPaused;
-    });
-    window.addEventListener('keyup', e => pressedKeys[e.code] = false);
+    // Remove existing listeners before adding new ones to prevent duplication
+    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('keyup', handleKeyUp);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
-    canvas.addEventListener('mousemove', (e) => {
-        if (isPaused) return;
-        const rect = canvas.getBoundingClientRect();
-        mousePos.x = e.clientX - rect.left;
-        mousePos.y = e.clientY - rect.top;
-        paddle.x = mousePos.x - paddle.width / 2;
-    });
+    canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('click', launchBall);
 }
 
+function handleKeyDown(e) {
+    pressedKeys[e.code] = true;
+    if (e.code === 'Space') launchBall();
+    if (e.code === 'KeyP') isPaused = !isPaused;
+}
+function handleKeyUp(e) { pressedKeys[e.code] = false; }
+function handleMouseMove(e) {
+    if (isPaused) return;
+    const rect = canvas.getBoundingClientRect();
+    mousePos.x = e.clientX - rect.left;
+    mousePos.y = e.clientY - rect.top;
+    paddle.x = mousePos.x - paddle.width / 2;
+}
+
 function createBlocks() {
-    const rows = 9, cols = 6, padding = 12;
+    const rows = 6, cols = 6, padding = 12;
     const totalPadding = padding * (cols + 1);
     const width = (canvas.width - totalPadding) / cols;
     const height = 24;
@@ -822,9 +841,61 @@ function gameTick() {
     if (!isPaused) {
         handlePaddleMovement();
         updatePhysics();
+        
+        // Scope Creep Timer
+        if (scopeWaveCount < 3) {
+            scopeTimerFrames--;
+            const activeBlocksCount = blocks.filter(b => b.active).length;
+            if (scopeTimerFrames <= 0 || activeBlocksCount === 0) {
+                applyScopeCreep();
+            }
+        }
     }
     drawGame();
     gameLoop = requestAnimationFrame(gameTick);
+}
+
+function applyScopeCreep() {
+    // Shift blocks down
+    const shiftY = 3 * (24 + 12); // 3 rows
+    blocks.forEach(b => {
+        if (b.active) {
+            b.y += shiftY;
+            // Danger Zone Check
+            if (b.y + b.height >= paddle.y) {
+                endGame(false);
+            }
+        }
+    });
+
+    // Spawn 3 new rows
+    const cols = 6, padding = 12;
+    const totalPadding = padding * (cols + 1);
+    const width = (canvas.width - totalPadding) / cols;
+    const height = 24;
+    const pool = [];
+    for (let key in BLOCK_TYPES) {
+        for (let i = 0; i < BLOCK_TYPES[key].weight; i++) pool.push(BLOCK_TYPES[key]);
+    }
+
+    for(let r=0; r<3; r++) {
+        for(let c=0; c<cols; c++) {
+            const type = pool[Math.floor(Math.random() * pool.length)];
+            blocks.push({ 
+                x: c * (width + padding) + padding, 
+                y: r * (height + padding) + padding + 60, 
+                width, 
+                height, 
+                type, 
+                active: true 
+            });
+        }
+    }
+
+    scopeWaveCount++;
+    currentBaseTimer--;
+    scopeTimerFrames = currentBaseTimer * 60;
+    updateUI();
 }
 
 function handlePaddleMovement() {
@@ -900,11 +971,18 @@ function updatePhysics() {
                 if (!activeEffects['fireball']) b.dy *= -1;
                 block.active = false; addScore(50); playClick();
                 if (block.type.power) handlePowerUpHit(block, block.type);
-                if (blocks.filter(bl => bl.active).length === 0) endGame(true);
+                
+                // Win Condition Check
+                const activeBlocksCount = blocks.filter(bl => bl.active).length;
+                if (activeBlocksCount === 0 && scopeWaveCount >= 3) winPhase();
             }
         });
     });
     particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.life--; if (p.life <= 0) particles.splice(i, 1); });
+}
+
+function winPhase() {
+    endGame(true);
 }
 
 function handlePowerUpHit(block, type) {
@@ -1049,15 +1127,46 @@ function updateTimersUI() {
     }
 }
 
-function updateUI() { document.getElementById('boss-lives').innerText = "★".repeat(lives); }
+function updateUI() { 
+    document.getElementById('boss-lives').innerText = "★".repeat(lives); 
+    const scopeTimerEl = document.getElementById('scope-timer');
+    if (scopeWaveCount >= 3) {
+        scopeTimerEl.innerText = "NO MORE SCOPE CREEP";
+        scopeTimerEl.classList.add('critical-success');
+    } else {
+        const seconds = Math.ceil(scopeTimerFrames / 60);
+        scopeTimerEl.innerText = seconds + "s";
+        scopeTimerEl.classList.remove('critical-success');
+    }
+}
+
 function endGame(win) {
     isPaused = true;
-    if (win) { document.getElementById('victory-overlay').classList.remove('hidden'); document.getElementById('final-score').innerText = scoreEl.innerText; }
-    else document.getElementById('game-over-overlay').classList.remove('hidden');
+    const score = document.getElementById('score').innerText;
+    if (win) { 
+        const victoryOverlay = document.getElementById('victory-overlay');
+        const victoryTitle = victoryOverlay.querySelector('h1');
+        victoryTitle.innerText = "PHASE " + currentPhase + " DEPLOYED";
+        victoryTitle.dataset.text = victoryTitle.innerText;
+        document.getElementById('final-score').innerText = score;
+        victoryOverlay.classList.remove('hidden'); 
+    }
+    else {
+        document.getElementById('game-over-score').innerText = score;
+        document.getElementById('game-over-overlay').classList.remove('hidden');
+    }
 }
 
 document.getElementById('retry-sprint-btn').onclick = () => {
     document.getElementById('game-over-overlay').classList.add('hidden');
+    // For retry, we don't reset phase or wave, just restart current attempt
     startBreakoutGame();
 };
-document.getElementById('restart-game-btn').onclick = () => location.reload();
+
+document.getElementById('restart-game-btn').onclick = () => {
+    // This is the "NEW PROJECT" button after victory
+    document.getElementById('victory-overlay').classList.add('hidden');
+    currentPhase++;
+    scopeWaveCount = 0;
+    startBreakoutGame();
+};
