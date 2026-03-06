@@ -340,6 +340,9 @@ const stages = {
 let userData = { name: '', studentId: '' };
 let currentStage = 1;
 let unlockedStages = 1;
+let educationScore = 0;
+let gameScore = 0;
+let totalPoint = 0;
 
 const loginScreen = document.getElementById('login-screen');
 const worldMap = document.getElementById('world-map');
@@ -448,7 +451,7 @@ function initStage1Game() {
                 currentScenarioIdx++;
                 feedback.innerText = "CRITICAL SUCCESS! SYSTEM ADAPTING...";
                 feedback.className = "critical-success";
-                addScore(100);
+                addScore(100, false);
                 
                 if (currentScenarioIdx < scenarios.length) {
                     setTimeout(() => {
@@ -500,7 +503,7 @@ function initStage2Game() {
                     feedback.innerText = "CORRECT PLACEMENT!";
                     if (placedCount === 3) {
                         feedback.innerText = "GAME COMPLETE! +100 EXP.";
-                        addScore(100);
+                        addScore(100, false);
                     }
                 }
             } else {
@@ -531,7 +534,7 @@ function initStage3Game() {
         else if (correctCount >= 6) {
             display.innerText = "MAX SPIRIT ACHIEVED!";
             badge.style.display = "block";
-            addScore(100);
+            addScore(100, false);
         }
     };
     const handleChoice = (choice) => {
@@ -542,12 +545,12 @@ function initStage3Game() {
         if (isCorrect) {
             gameBox.classList.add('flash-green');
             correctCount++; currentIdx++;
-            addScore(50);
+            addScore(50, false);
             fill.style.width = (correctCount / 6 * 100) + "%";
             playClick();
         } else {
             gameBox.classList.add('flash-red');
-            addScore(-20);
+            addScore(-20, false);
         }
         updateDisplay();
     };
@@ -577,7 +580,7 @@ function initStage4Interactions() {
                 item.classList.add('checked');
                 checkedCount++;
                 if (checkedCount === 4) {
-                    addScore(100);
+                    addScore(100, false);
                     setTimeout(() => {
                         document.getElementById('popup-refinement').classList.add('show');
                         playClick();
@@ -612,7 +615,7 @@ document.getElementById('next-btn').addEventListener('click', () => {
         const nextStage = currentStage + 1;
         if (nextStage > unlockedStages) {
             unlockedStages = nextStage;
-            addScore(1000);
+            addScore(1000, false);
         }
         
         // Show World Map first for the walk animation
@@ -677,20 +680,16 @@ function updateMap() {
     }
 }
 
-function addScore(points) {
-    let currentScore = parseInt(scoreEl.innerText);
-    let targetScore = Math.max(0, currentScore + points);
-    const interval = setInterval(() => {
-        if (currentScore < targetScore) {
-            currentScore += 10;
-        } else if (currentScore > targetScore) {
-            currentScore -= 10;
-        } else {
-            clearInterval(interval);
-        }
-        scoreEl.innerText = currentScore.toString().padStart(5, '0');
-        if (currentScore >= 1200) rankEl.innerText = "SENIOR PM";
-    }, 20);
+function addScore(points, isGameScore = false) {
+    if (isGameScore) {
+        gameScore += points;
+    } else {
+        educationScore += points;
+    }
+    
+    let displayScore = educationScore + gameScore;
+    scoreEl.innerText = displayScore.toString().padStart(5, '0');
+    if (displayScore >= 1200) rankEl.innerText = "SENIOR PM";
 }
 
 function playClick() {
@@ -733,7 +732,7 @@ let mousePos = { x: 0, y: 0 };
 let fallingPowerUps = [];
 
 // WAVE & PHASE SYSTEM
-let currentBaseTimer = 60; 
+let currentBaseTimer = 120; 
 let scopeWaveCount = 0; 
 let currentPhase = 1;
 let scopeTimerFrames = currentBaseTimer * 60;
@@ -753,7 +752,7 @@ function startBreakoutGame() {
         document.getElementById('role-list').innerHTML = '';
         discoveredRoles.clear();
         lives = 3;
-        currentBaseTimer = 60;
+        currentBaseTimer = 120;
     }
 
     balls = [{ x: canvas.width/2, y: canvas.height-30, dx: 3, dy: -3, radius: 6, stuck: true }];
@@ -843,7 +842,7 @@ function gameTick() {
         updatePhysics();
         
         // Scope Creep Timer
-        if (scopeWaveCount < 3) {
+        if (scopeWaveCount < 25) {
             scopeTimerFrames--;
             const activeBlocksCount = blocks.filter(b => b.active).length;
             if (scopeTimerFrames <= 0 || activeBlocksCount === 0) {
@@ -856,8 +855,11 @@ function gameTick() {
 }
 
 function applyScopeCreep() {
-    // Shift blocks down
-    const shiftY = 3 * (24 + 12); // 3 rows
+    const brickHeight = 24;
+    const brickPadding = 12;
+    const shiftY = brickHeight + brickPadding;
+
+    // Shift existing blocks down by exactly ONE row
     blocks.forEach(b => {
         if (b.active) {
             b.y += shiftY;
@@ -868,7 +870,7 @@ function applyScopeCreep() {
         }
     });
 
-    // Spawn 3 new rows
+    // Spawn exactly ONE new row at the top
     const cols = 6, padding = 12;
     const totalPadding = padding * (cols + 1);
     const width = (canvas.width - totalPadding) / cols;
@@ -878,22 +880,23 @@ function applyScopeCreep() {
         for (let i = 0; i < BLOCK_TYPES[key].weight; i++) pool.push(BLOCK_TYPES[key]);
     }
 
-    for(let r=0; r<3; r++) {
-        for(let c=0; c<cols; c++) {
-            const type = pool[Math.floor(Math.random() * pool.length)];
-            blocks.push({ 
-                x: c * (width + padding) + padding, 
-                y: r * (height + padding) + padding + 60, 
-                width, 
-                height, 
-                type, 
-                active: true 
-            });
-        }
+    const rowY = 60 + padding; // Top row Y position
+    for(let c=0; c<cols; c++) {
+        const type = pool[Math.floor(Math.random() * pool.length)];
+        blocks.push({ 
+            x: c * (width + padding) + padding, 
+            y: rowY, 
+            width, 
+            height, 
+            type, 
+            active: true 
+        });
     }
 
     scopeWaveCount++;
-    currentBaseTimer--;
+    if (scopeWaveCount < 25) {
+        currentBaseTimer = Math.max(10, currentBaseTimer - 1);
+    }
     scopeTimerFrames = currentBaseTimer * 60;
     updateUI();
 }
@@ -969,12 +972,12 @@ function updatePhysics() {
         blocks.forEach(block => {
             if (block.active && b.x > block.x && b.x < block.x + block.width && b.y > block.y && b.y < block.y + block.height) {
                 if (!activeEffects['fireball']) b.dy *= -1;
-                block.active = false; addScore(50); playClick();
+                block.active = false; addScore(50, true); playClick();
                 if (block.type.power) handlePowerUpHit(block, block.type);
                 
                 // Win Condition Check
                 const activeBlocksCount = blocks.filter(bl => bl.active).length;
-                if (activeBlocksCount === 0 && scopeWaveCount >= 3) winPhase();
+                if (activeBlocksCount === 0 && scopeWaveCount >= 25) winPhase();
             }
         });
     });
@@ -998,7 +1001,7 @@ function handlePowerUpHit(block, type) {
                 const dist = Math.sqrt(Math.pow(bCenterX - centerX, 2) + Math.pow(bCenterY - centerY, 2));
                 if (dist < range) {
                     b.active = false;
-                    addScore(25);
+                    addScore(25, true);
                     for(let i=0; i<3; i++) particles.push({ x: bCenterX, y: bCenterY, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 20, color: '#FF6600' });
                 }
             }
@@ -1129,42 +1132,49 @@ function updateTimersUI() {
 
 function updateUI() { 
     document.getElementById('boss-lives').innerText = "★".repeat(lives); 
-    const scopeTimerEl = document.getElementById('scope-timer');
-    if (scopeWaveCount >= 3) {
-        scopeTimerEl.innerText = "NO MORE SCOPE CREEP";
-        scopeTimerEl.classList.add('critical-success');
+    
+    const scopeTimerText = document.getElementById('scope-timer-text');
+    if (scopeWaveCount >= 25) {
+        scopeTimerText.innerText = "MAX";
+        scopeTimerText.classList.remove('timer-blink');
     } else {
         const seconds = Math.ceil(scopeTimerFrames / 60);
-        scopeTimerEl.innerText = seconds + "s";
-        scopeTimerEl.classList.remove('critical-success');
+        scopeTimerText.innerText = seconds;
+        if (seconds <= 10) {
+            scopeTimerText.classList.add('timer-blink');
+        } else {
+            scopeTimerText.classList.remove('timer-blink');
+        }
     }
 }
 
 function endGame(win) {
     isPaused = true;
-    const score = document.getElementById('score').innerText;
+    totalPoint = educationScore + gameScore;
+    const scoreStr = totalPoint.toString().padStart(5, '0');
+    
     if (win) { 
         const victoryOverlay = document.getElementById('victory-overlay');
         const victoryTitle = victoryOverlay.querySelector('h1');
         victoryTitle.innerText = "PHASE " + currentPhase + " DEPLOYED";
         victoryTitle.dataset.text = victoryTitle.innerText;
-        document.getElementById('final-score').innerText = score;
+        document.getElementById('final-score').innerText = scoreStr;
         victoryOverlay.classList.remove('hidden'); 
     }
     else {
-        document.getElementById('game-over-score').innerText = score;
+        document.getElementById('game-over-score').innerText = scoreStr;
         document.getElementById('game-over-overlay').classList.remove('hidden');
     }
 }
 
 document.getElementById('retry-sprint-btn').onclick = () => {
     document.getElementById('game-over-overlay').classList.add('hidden');
-    // For retry, we don't reset phase or wave, just restart current attempt
+    gameScore = 0; // Reset game score only
+    addScore(0, true); // Update UI display
     startBreakoutGame();
 };
 
 document.getElementById('restart-game-btn').onclick = () => {
-    // This is the "NEW PROJECT" button after victory
     document.getElementById('victory-overlay').classList.add('hidden');
     currentPhase++;
     scopeWaveCount = 0;

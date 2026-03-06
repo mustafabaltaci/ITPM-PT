@@ -943,6 +943,24 @@ th { background: rgba(255, 0, 255, 0.2); color: var(--neon-magenta); }
     transition: width 0.1s linear; /* Smoother for countdown */
 }
 
+#scope-timer-text {
+    color: var(--neon-cyan);
+    font-weight: bold;
+    min-width: 40px;
+    display: inline-block;
+}
+
+.timer-blink {
+    color: #ff0000 !important;
+    animation: critical-blink 0.5s infinite;
+}
+
+@keyframes critical-blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
 .legendary-text {
     font-size: 4rem;
     color: #fff;
