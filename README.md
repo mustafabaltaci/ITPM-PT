@@ -33,7 +33,7 @@ EmailJS: Proje yöneticisine (öğretmene) tüm sprint detaylarını içeren pro
 Kurulum ve Çalıştırma
 Projeyi bilgisayarınıza klonlayın:
 Bash
-git clone https://github.com/mustafabaltaci/sprint-breaker.git
+git clone https://github.com/mustafabaltaci/ITPM-PT.git
 index.html dosyasını tarayıcınızda açın.
 Kendi API anahtarlarınızı eklemeyi unutmayın:
 script.js içerisindeki EmailJS ve Google Script URL kısımlarını kendi bilgilerinizle güncelleyin.
