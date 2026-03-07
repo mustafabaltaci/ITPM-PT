@@ -127,23 +127,21 @@
                     </div>
                 </div>
             </div>
-            <div id="victory-overlay" class="overlay hidden">
-                <div class="certificate">
-                    <h1 class="glitch" data-text="PROJECT DEPLOYED">PROJECT DEPLOYED</h1>
-                    <h2>SENIOR PM CERTIFIED</h2>
-                    <p>FINAL SCORE: <span id="final-score">00000</span></p>
-                    
-                    <div class="leaderboard-container">
-                        <h3>🏆 TOP PROJECT MANAGERS</h3>
-                        <ul class="leaderboard-list">
-                            <li>Loading server data...</li>
-                        </ul>
-                    </div>
+            <div class="overlay hidden" id="victory-overlay">
+                <h1 class="glitch" data-text="SPRINT DONE">SPRINT DONE</h1>
+                <p>Total Score: <span id="final-score" class="neon-text">0</span></p>
 
-                    <div class="overlay-buttons">
-                        <button id="restart-game-btn" class="btn">NEW PROJECT</button>
-                        <button class="submit-score-btn btn neon-btn" onclick="sendScoreEmail(this)">SUBMIT FEEDBACK</button>
-                    </div>
+                <div class="button-group">
+                    <button id="next-sprint-btn" class="arcade-btn">START NEXT SPRINT</button>
+                    <button id="victory-submit-btn" class="arcade-btn submit-score-btn" onclick="sendScoreEmail(this)">SUBMIT SCORE & EXIT</button>
+                    <button id="toggle-leaderboard-btn" class="arcade-btn">VIEW LEADERBOARD</button>
+                </div>
+
+                <div id="victory-leaderboard-container" class="leaderboard-container hidden">
+                    <h3>🏆 TOP PROJECT MANAGERS</h3>
+                    <ul class="leaderboard-list">
+                        <li>Loading server data...</li>
+                    </ul>
                 </div>
             </div>
             <div id="game-over-overlay" class="overlay hidden">

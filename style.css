@@ -1127,3 +1127,29 @@ th { background: rgba(255, 0, 255, 0.2); color: var(--neon-magenta); }
     0% { clip: rect(50px, 9999px, 100px, 0); }
     100% { clip: rect(10px, 9999px, 60px, 0); }
 }
+
+#victory-overlay, #game-over-overlay {
+    border: 2px solid #ffe600 !important;
+    box-shadow: 0 0 15px rgba(255, 230, 0, 0.8), inset 0 0 15px rgba(255, 230, 0, 0.5) !important;
+}
+
+.arcade-btn, .submit-score-btn {
+    border: 2px solid #ffe600 !important;
+    color: #ffe600 !important;
+    background: transparent !important;
+    box-shadow: 0 0 8px rgba(255, 230, 0, 0.6), inset 0 0 8px rgba(255, 230, 0, 0.4) !important;
+    text-shadow: 0 0 5px #ffe600 !important;
+    transition: all 0.3s ease-in-out;
+}
+
+.arcade-btn:hover, .submit-score-btn:hover {
+    background: #ffe600 !important;
+    color: #000 !important;
+    box-shadow: 0 0 20px rgba(255, 230, 0, 1), inset 0 0 15px rgba(255, 230, 0, 0.8) !important;
+    text-shadow: none !important;
+}
+
+#victory-submit-btn {
+    border-color: #ffcc00 !important;
+    color: #ffcc00 !important;
+}

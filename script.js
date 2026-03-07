@@ -1366,21 +1366,32 @@ function endGame(win) {
     isPaused = true;
     totalPoint = educationScore + gameScore;
     const scoreStr = totalPoint.toString().padStart(5, '0');
-    
-    // Load Leaderboard data from Google Sheets
-    loadLeaderboard();
-    
+
     if (win) { 
         const victoryOverlay = document.getElementById('victory-overlay');
         const victoryTitle = victoryOverlay.querySelector('h1');
-        victoryTitle.innerText = "PHASE " + currentPhase + " DEPLOYED";
+        victoryTitle.innerText = "SPRINT " + currentPhase + " DONE";
         victoryTitle.dataset.text = victoryTitle.innerText;
         document.getElementById('final-score').innerText = scoreStr;
+
+        // Reset button states in case they submitted previously
+        const submitBtn = document.getElementById('victory-submit-btn');
+        if(submitBtn) {
+            submitBtn.innerText = "SUBMIT SCORE & EXIT";
+            submitBtn.disabled = false;
+            submitBtn.style.color = "var(--neon-green)";
+        }
+        // Hide leaderboard by default on victory screen
+        const lbContainer = document.getElementById('victory-leaderboard-container');
+        if(lbContainer) lbContainer.classList.add('hidden');
+
         victoryOverlay.classList.remove('hidden'); 
     }
     else {
         document.getElementById('game-over-score').innerText = scoreStr;
         document.getElementById('game-over-overlay').classList.remove('hidden');
+        // Automatically load leaderboard on Game Over
+        loadLeaderboard();
     }
 }
 
@@ -1395,9 +1406,20 @@ document.getElementById('retry-sprint-btn').onclick = () => {
     startBreakoutGame();
 };
 
-document.getElementById('restart-game-btn').onclick = () => {
+document.getElementById('next-sprint-btn').onclick = () => {
     document.getElementById('victory-overlay').classList.add('hidden');
     currentPhase++;
     scopeWaveCount = 0;
     startBreakoutGame();
 };
+
+const toggleLbBtn = document.getElementById('toggle-leaderboard-btn');
+if (toggleLbBtn) {
+    toggleLbBtn.addEventListener('click', () => {
+        const lbContainer = document.getElementById('victory-leaderboard-container');
+        lbContainer.classList.toggle('hidden');
+        if (!lbContainer.classList.contains('hidden')) {
+            loadLeaderboard();
+        }
+    });
+}
